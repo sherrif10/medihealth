@@ -59,6 +59,12 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 	@Autowired
 	private NewbornDataSetBuilder newbornDataSetBuilder;
 	
+	@Autowired
+	private ImmunizationDataSetBuilder immunizationDataSetBuilder;
+	
+	@Autowired
+	private BirthRegistrationDataSetBuilder birthRegistrationDataSetBuilder;
+	
 	@Override
 	public String getUuid() {
 		return UUID;
@@ -95,6 +101,8 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 		addPeriodDataSet(rd, "labourDelivery", labourDeliveryDataSetBuilder.build());
 		addPeriodDataSet(rd, "postnatalCare", postnatalCareDataSetBuilder.build());
 		addPeriodDataSet(rd, "newborn", newbornDataSetBuilder.build());
+		addPeriodDataSet(rd, "immunization", immunizationDataSetBuilder.build());
+		addPeriodDataSet(rd, "birthRegistration", birthRegistrationDataSetBuilder.build());
 		return rd;
 	}
 	
