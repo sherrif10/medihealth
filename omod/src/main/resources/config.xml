@@ -20,7 +20,6 @@
 	
 	<require_modules>
 		<require_module version="5.0.4">org.openmrs.module.idgen</require_module>
-		<require_module version="2.2.0">org.openmrs.module.datafilter</require_module>
-		<require_module version="1.28.0">org.openmrs.module.reporting</require_module>
+		<require_module version="2.1.0">org.openmrs.module.reporting</require_module>
 	</require_modules>
 	</module>
