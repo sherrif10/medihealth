@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<module configVersion="1.2">
+	
+	<!-- Base Module Properties -->
+	<id>${project.parent.artifactId}</id>
+	<name>${project.parent.name}</name>
+	<version>${project.parent.version}</version>
+	<package>org.openmrs.module.medihealth</package>
+	<author>root</author>
+	<description>
+			${project.parent.description}
+	</description>
+
+	<activator>org.openmrs.module.medihealth.MedihealthActivator</activator>
+	
+	<advice>
+	
+	</advice>
+	
+	<require_modules>
+		<require_module version="5.0.4">org.openmrs.module.idgen</require_module>
+		<require_module version="2.2.0">org.openmrs.module.datafilter</require_module>
+		<require_module version="1.28.0">org.openmrs.module.reporting</require_module>
+	</require_modules>
+	</module>
