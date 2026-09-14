@@ -39,6 +39,17 @@ public class AgeSexBands {
 	 */
 	public static final String INPATIENT_AGE_BAND_SQL = ageBandCaseSql("10-19yrs");
 	
+	/**
+	 * Age bands used by ANC attendance (form row 10): 10-14yrs, 15-19yrs, 20-35yrs, 35-49yrs,
+	 * &gt;=50yrs. Boundary ages (e.g. exactly 35) fall into the higher band, resolving the paper
+	 * form's overlapping band labels the same way {@link #ageBandCaseSql} does elsewhere.
+	 */
+	public static final String ANC_AGE_BAND_SQL = "CASE "
+	        + "WHEN TIMESTAMPDIFF(YEAR, p.birthdate, event_date) < 15 THEN '10-14yrs' "
+	        + "WHEN TIMESTAMPDIFF(YEAR, p.birthdate, event_date) < 20 THEN '15-19yrs' "
+	        + "WHEN TIMESTAMPDIFF(YEAR, p.birthdate, event_date) < 35 THEN '20-35yrs' "
+	        + "WHEN TIMESTAMPDIFF(YEAR, p.birthdate, event_date) < 50 THEN '35-49yrs' " + "ELSE '>=50yrs' END";
+	
 	private static String ageBandCaseSql(String teenBandLabel) {
 		return "CASE " + "WHEN DATEDIFF(event_date, p.birthdate) <= 28 THEN '0-28 days' "
 		        + "WHEN TIMESTAMPDIFF(MONTH, p.birthdate, event_date) < 12 THEN '29d-11mths' "

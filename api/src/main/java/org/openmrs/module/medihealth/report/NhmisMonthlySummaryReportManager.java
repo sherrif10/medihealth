@@ -47,6 +47,18 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 	@Autowired
 	private MortalityDataSetBuilder mortalityDataSetBuilder;
 	
+	@Autowired
+	private AncDataSetBuilder ancDataSetBuilder;
+	
+	@Autowired
+	private LabourDeliveryDataSetBuilder labourDeliveryDataSetBuilder;
+	
+	@Autowired
+	private PostnatalCareDataSetBuilder postnatalCareDataSetBuilder;
+	
+	@Autowired
+	private NewbornDataSetBuilder newbornDataSetBuilder;
+	
 	@Override
 	public String getUuid() {
 		return UUID;
@@ -79,6 +91,10 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 		addPeriodDataSet(rd, "attendance", attendanceDataSetBuilder.build());
 		addPeriodDataSet(rd, "inpatientCare", inpatientCareDataSetBuilder.build());
 		addPeriodDataSet(rd, "mortality", mortalityDataSetBuilder.build());
+		addPeriodDataSet(rd, "anc", ancDataSetBuilder.build());
+		addPeriodDataSet(rd, "labourDelivery", labourDeliveryDataSetBuilder.build());
+		addPeriodDataSet(rd, "postnatalCare", postnatalCareDataSetBuilder.build());
+		addPeriodDataSet(rd, "newborn", newbornDataSetBuilder.build());
 		return rd;
 	}
 	
