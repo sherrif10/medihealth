@@ -16,7 +16,7 @@
 	<properties>
 		<openMRSVersion>2.6.6</openMRSVersion>
 		<idgenModuleVersion>4.11.0-SNAPSHOT</idgenModuleVersion>
-		<reportingModuleVersion>2.1.0</reportingModuleVersion>
+		<reportingModuleVersion>1.28.0</reportingModuleVersion>
 	</properties>
 
 	<dependencies>
