@@ -15,7 +15,6 @@
 
 	<properties>
 		<openMRSVersion>2.6.6</openMRSVersion>
-		<idgenModuleVersion>4.11.0-SNAPSHOT</idgenModuleVersion>
 		<reportingModuleVersion>1.28.0</reportingModuleVersion>
 	</properties>
 
@@ -60,13 +59,6 @@
 			<groupId>org.openmrs.api</groupId>
 			<artifactId>openmrs-api</artifactId>
 			<version>${openMRSVersion}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.openmrs.module</groupId>
-			<artifactId>idgen-api</artifactId>
-			<type>jar</type>
-			<scope>provided</scope>
-			<version>${idgenModuleVersion}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.openmrs.module</groupId>
