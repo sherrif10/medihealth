@@ -20,13 +20,18 @@ import org.openmrs.module.reporting.report.ReportDesign;
 import org.openmrs.module.reporting.report.definition.ReportDefinition;
 import org.openmrs.module.reporting.report.manager.BaseReportManager;
 import org.openmrs.module.reporting.report.renderer.CsvReportRenderer;
+import org.openmrs.module.reporting.report.renderer.XlsReportRenderer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
  * Registers the "Pharmacy Sales Ledger" report with the Reporting Module, so it shows up in the O3
- * Reports app with CSV download already wired up - requested by the pharmacist for daily auditing
- * of how much was sold and how many units of each medication were dispensed.
+ * Reports app with CSV and Excel download already wired up - requested by the pharmacist for daily
+ * auditing of how much was sold and how many units of each medication were dispensed. Excel uses
+ * {@link XlsReportRenderer}, which writes a plain workbook straight from the dataset with no
+ * template file required - {@code ExcelTemplateRenderer} was the other option available in this
+ * reporting module version, but it needs a template resource that doesn't exist for this report and
+ * isn't worth building for a straightforward tabular export like this one.
  */
 @Component("medihealth.PharmacySalesLedgerReportManager")
 public class PharmacySalesLedgerReportManager extends BaseReportManager {
@@ -89,6 +94,13 @@ public class PharmacySalesLedgerReportManager extends BaseReportManager {
 		csvDesign.setReportDefinition(reportDefinition);
 		csvDesign.setRendererType(CsvReportRenderer.class);
 		designs.add(csvDesign);
+
+		ReportDesign xlsDesign = new ReportDesign();
+		xlsDesign.setUuid("b1e6f3a9-7c2d-4e8b-9a5f-3d6c1e8b4f92");
+		xlsDesign.setName(getName() + " Excel");
+		xlsDesign.setReportDefinition(reportDefinition);
+		xlsDesign.setRendererType(XlsReportRenderer.class);
+		designs.add(xlsDesign);
 		return designs;
 	}
 }
