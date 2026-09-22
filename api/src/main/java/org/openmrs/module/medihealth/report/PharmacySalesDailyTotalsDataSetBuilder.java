@@ -19,8 +19,10 @@ import org.springframework.stereotype.Component;
  * One row per day: total units dispensed and total revenue across all medications, so "how much was
  * made today" is a single number instead of having to sum
  * {@link PharmacySalesByMedicationDataSetBuilder}'s detail rows by hand. Same medication
- * definition, bill-status filter, and per-unit-price multiplication as that dataset - see its class
- * comment for the reasoning.
+ * definition, bill-status filter, and per-unit-price multiplication as that dataset - including the
+ * {@code cashier_billable_service.retired} and {@code cashier_bill.status} string-value quirks
+ * documented on its class comment - the actual column names and value types this server uses,
+ * confirmed from the real evaluation error after the first version of this query failed.
  */
 @Component("medihealth.PharmacySalesDailyTotalsDataSetBuilder")
 public class PharmacySalesDailyTotalsDataSetBuilder {
@@ -42,9 +44,9 @@ public class PharmacySalesDailyTotalsDataSetBuilder {
 		sql.append("  SUM(cbli.quantity * cbli.price) AS total_revenue\n");
 		sql.append("FROM cashier_bill_line_item cbli\n");
 		sql.append("JOIN cashier_bill cb ON cb.bill_id = cbli.bill_id AND cb.voided = 0\n");
-		sql.append("JOIN cashier_billable_service cbs ON cbs.service_id = cbli.service_id AND cbs.voided = 0\n");
+		sql.append("JOIN cashier_billable_service cbs ON cbs.service_id = cbli.service_id AND cbs.retired = 0\n");
 		sql.append("WHERE cbli.voided = 0\n");
-		sql.append("  AND cb.status IN (1, 2)\n"); // POSTED, PAID - see BillStatus enum ordinals
+		sql.append("  AND cb.status IN ('POSTED', 'PAID')\n");
 		sql.append("  AND cbs.service_type = (\n");
 		sql.append("    SELECT concept_id FROM concept_name\n");
 		sql.append("    WHERE name = 'Pharmacy' AND voided = 0\n");
