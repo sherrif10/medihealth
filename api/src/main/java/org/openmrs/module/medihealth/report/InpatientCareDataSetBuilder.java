@@ -36,8 +36,8 @@ public class InpatientCareDataSetBuilder {
 	private String buildSql() {
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT\n");
-		sql.append("  SUM(CASE WHEN encounter_type_name = 'Admission' THEN 1 ELSE 0 END) AS patients_admitted_total,\n");
-		sql.append("  SUM(CASE WHEN encounter_type_name = 'Discharge' THEN 1 ELSE 0 END) AS inpatient_discharges_total");
+		sql.append("  COUNT(CASE WHEN encounter_type_name = 'Admission' THEN 1 END) AS patients_admitted_total,\n");
+		sql.append("  COUNT(CASE WHEN encounter_type_name = 'Discharge' THEN 1 END) AS inpatient_discharges_total");
 		AgeSexColumnFactory.appendColumns(sql, "patients_admitted", "encounter_type_name = 'Admission'");
 		AgeSexColumnFactory.appendColumns(sql, "inpatient_discharges", "encounter_type_name = 'Discharge'");
 		sql.append("\nFROM (\n");

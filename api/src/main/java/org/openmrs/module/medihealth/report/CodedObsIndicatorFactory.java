@@ -21,9 +21,9 @@ public class CodedObsIndicatorFactory {
 	
 	public static void appendSelectColumns(StringBuilder sql, String baseAlias, List<CodedObsColumn> columns) {
 		for (CodedObsColumn c : columns) {
-			sql.append(",\n  SUM(CASE WHEN ").append(joinAlias(c))
+			sql.append(",\n  COUNT(CASE WHEN ").append(joinAlias(c))
 			        .append(".value_coded = (SELECT concept_id FROM concept " + "WHERE uuid = '")
-			        .append(c.answerConceptUuid).append("') THEN 1 ELSE 0 END) AS ").append(c.columnAlias);
+			        .append(c.answerConceptUuid).append("') THEN 1 END) AS ").append(c.columnAlias);
 		}
 	}
 	

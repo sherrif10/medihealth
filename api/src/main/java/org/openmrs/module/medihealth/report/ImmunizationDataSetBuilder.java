@@ -106,19 +106,19 @@ public class ImmunizationDataSetBuilder {
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT COUNT(*) AS doses_total");
 		for (String dose : Arrays.asList("1", "2", "3", "4", "5")) {
-			sql.append(",\n  SUM(CASE WHEN vaccine_uuid = '").append(TD_PREGNANT_CONCEPT).append("' AND td_dose_number = ")
-			        .append(dose).append(" THEN 1 ELSE 0 END) AS td_pregnant_dose").append(dose);
+			sql.append(",\n  COUNT(CASE WHEN vaccine_uuid = '").append(TD_PREGNANT_CONCEPT)
+			        .append("' AND td_dose_number = ").append(dose).append(" THEN 1 END) AS td_pregnant_dose").append(dose);
 		}
 		for (String dose : Arrays.asList("1", "2", "3", "4", "5")) {
-			sql.append(",\n  SUM(CASE WHEN vaccine_uuid = '").append(TD_NON_PREGNANT_CONCEPT)
-			        .append("' AND td_dose_number = ").append(dose).append(" THEN 1 ELSE 0 END) AS td_non_pregnant_dose")
+			sql.append(",\n  COUNT(CASE WHEN vaccine_uuid = '").append(TD_NON_PREGNANT_CONCEPT)
+			        .append("' AND td_dose_number = ").append(dose).append(" THEN 1 END) AS td_non_pregnant_dose")
 			        .append(dose);
 		}
 		VaccineDoseIndicatorFactory.appendSelectColumns(sql, ANTIGEN_COLUMNS);
-		sql.append(",\n  SUM(CASE WHEN vaccine_uuid = '").append(FULLY_IMMUNIZED_UNDER1_CONCEPT)
-		        .append("' AND location_band = 'Fixed' THEN 1 ELSE 0 END) AS fully_immunized_lt1yr_fixed");
-		sql.append(",\n  SUM(CASE WHEN vaccine_uuid = '").append(FULLY_IMMUNIZED_UNDER1_CONCEPT)
-		        .append("' AND location_band = 'Outreach' THEN 1 ELSE 0 END) AS fully_immunized_lt1yr_outreach");
+		sql.append(",\n  COUNT(CASE WHEN vaccine_uuid = '").append(FULLY_IMMUNIZED_UNDER1_CONCEPT)
+		        .append("' AND location_band = 'Fixed' THEN 1 END) AS fully_immunized_lt1yr_fixed");
+		sql.append(",\n  COUNT(CASE WHEN vaccine_uuid = '").append(FULLY_IMMUNIZED_UNDER1_CONCEPT)
+		        .append("' AND location_band = 'Outreach' THEN 1 END) AS fully_immunized_lt1yr_outreach");
 		
 		sql.append("\nFROM (\n");
 		sql.append("  SELECT o.encounter_id, vc.uuid AS vaccine_uuid,\n");

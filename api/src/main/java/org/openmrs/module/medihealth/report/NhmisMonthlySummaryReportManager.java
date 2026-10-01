@@ -19,7 +19,7 @@ import org.openmrs.module.reporting.evaluation.parameter.ParameterizableUtil;
 import org.openmrs.module.reporting.report.ReportDesign;
 import org.openmrs.module.reporting.report.definition.ReportDefinition;
 import org.openmrs.module.reporting.report.manager.BaseReportManager;
-import org.openmrs.module.reporting.report.renderer.CsvReportRenderer;
+import org.openmrs.module.reporting.report.manager.ReportManagerUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -115,7 +115,7 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 	
 	@Override
 	public String getVersion() {
-		return "1.2";
+		return "1.5";
 	}
 	
 	@Override
@@ -159,12 +159,13 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 	@Override
 	public List<ReportDesign> constructReportDesigns(ReportDefinition reportDefinition) {
 		List<ReportDesign> designs = new ArrayList<>();
-		ReportDesign csvDesign = new ReportDesign();
-		csvDesign.setUuid("6e1a3b7c-2d4f-4b8a-9a1e-0b6c8d2e7f10");
-		csvDesign.setName(getName() + " CSV");
-		csvDesign.setReportDefinition(reportDefinition);
-		csvDesign.setRendererType(CsvReportRenderer.class);
-		designs.add(csvDesign);
+		// The only download: the official NHMIS MSF v2019 sheet with each box filled in, ready to print and sign.
+		// (A CSV design used to sit next to it; it produced one file per section, 20 in all, and confused users.)
+		ReportDesign formDesign = ReportManagerUtil.createExcelTemplateDesign("0c5d7e2a-9b41-4f6e-8a3d-2e7b1c9f4a58",
+		    reportDefinition, "org/openmrs/module/medihealth/report/nhmis-msf-template.xls");
+		formDesign.setName(getName() + " (official form, Excel)");
+		formDesign.setRendererType(NhmisFormRenderer.class);
+		designs.add(formDesign);
 		return designs;
 	}
 }
