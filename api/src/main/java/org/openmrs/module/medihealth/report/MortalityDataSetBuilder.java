@@ -67,7 +67,7 @@ public class MortalityDataSetBuilder {
 		sql.append("  FROM (\n");
 		sql.append("    SELECT person_id, death_date AS event_date, cause_of_death AS cause_of_death_concept_id\n");
 		sql.append("    FROM person\n");
-		sql.append("    WHERE dead = 1 AND voided = 0 AND death_date BETWEEN :startDate AND :endDate\n");
+		sql.append("    WHERE dead = 1 AND voided = 0 AND death_date >= :startDate AND death_date < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
 		sql.append("  ) ev\n");
 		sql.append("  JOIN person p ON p.person_id = ev.person_id\n");
 		sql.append("  LEFT JOIN concept c ON c.concept_id = ev.cause_of_death_concept_id\n");

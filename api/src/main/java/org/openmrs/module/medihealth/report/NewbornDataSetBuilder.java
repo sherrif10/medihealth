@@ -95,7 +95,7 @@ public class NewbornDataSetBuilder {
 		sql.append("  FROM encounter e\n");
 		sql.append("  JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
 		sql.append("  WHERE e.voided = 0 AND et.name = 'Newborn Care'\n");
-		sql.append("    AND e.encounter_datetime BETWEEN :startDate AND :endDate\n");
+		sql.append("    AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
 		sql.append(") ev\n");
 		sql.append(leftJoinObs("o_live", LIVE_BIRTH_CONCEPT));
 		sql.append(leftJoinObs("o_male", NEWBORN_MALE_CONCEPT));

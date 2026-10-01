@@ -49,7 +49,7 @@ public class ImmunizationDataSetBuilder {
 	/** Rows 65-82, 84-87: standard EPI antigens, each split by age band x delivery location. */
 	private static final List<VaccineDoseColumn> ANTIGEN_COLUMNS = Arrays.asList(new VaccineDoseColumn("opv0",
 	        "46bfb919-6b32-4040-b089-5f2077b890a4"), new VaccineDoseColumn("hepb0", "08ab1510-aee0-4687-9c12-5db506470fa7"),
-	    new VaccineDoseColumn("bcg", "a4e8b674-eee4-41c2-a473-2eadc38f443b"), new VaccineDoseColumn("opv1",
+	    new VaccineDoseColumn("bcg", "4f60c141-9051-4f22-a4b1-f286e17681a8"), new VaccineDoseColumn("opv1",
 	            "c0290e1e-0f66-4e3f-aeb7-552e8cdfd67a"), new VaccineDoseColumn("penta1",
 	            "610e5a89-02ba-43ab-8814-39eb3257db08"), new VaccineDoseColumn("pcv1",
 	            "57845954-da0e-46eb-b713-54b8fc55a853"), new VaccineDoseColumn("rota1",
@@ -140,7 +140,7 @@ public class ImmunizationDataSetBuilder {
 		sql.append("  WHERE o.voided = 0 AND e.voided = 0 AND et.name = 'Immunization Record'\n");
 		sql.append("    AND o.concept_id = (SELECT concept_id FROM concept WHERE uuid = '")
 		        .append(VACCINE_ADMINISTERED_CONCEPT).append("')\n");
-		sql.append("    AND e.encounter_datetime BETWEEN :startDate AND :endDate\n");
+		sql.append("    AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
 		sql.append("  ) x");
 		return sql.toString();
 	}
@@ -155,7 +155,7 @@ public class ImmunizationDataSetBuilder {
 		sql.append("  FROM encounter e\n");
 		sql.append("  JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
 		sql.append("  WHERE e.voided = 0 AND et.name = 'Immunization Record'\n");
-		sql.append("    AND e.encounter_datetime BETWEEN :startDate AND :endDate\n");
+		sql.append("    AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
 		sql.append("  ) y");
 		CodedObsIndicatorFactory.appendJoins(sql, "y", AEFI_COLUMNS);
 		BooleanObsIndicatorFactory.appendJoins(sql, "y", AEFI_FLAG_COLUMNS);

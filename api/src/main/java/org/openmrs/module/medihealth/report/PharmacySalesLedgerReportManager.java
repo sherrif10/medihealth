@@ -60,9 +60,19 @@ public class PharmacySalesLedgerReportManager extends BaseReportManager {
 		return "Daily pharmacy sales: revenue and quantity dispensed per medication, for auditing";
 	}
 	
+	/**
+	 * Bump this every time constructReportDefinition()/constructReportDesigns() actually changes -
+	 * ReportManagerUtil.setupReport() reads the last-registered version from a global property
+	 * (reporting.reportManager.{uuid}.version) and skips rebuilding the report entirely if it
+	 * already matches this value, even across a full module reload. The column-name fix that
+	 * shipped in this same branch's next commit was correct but silently never took effect on QA
+	 * for exactly this reason - the version was still "1.0" from the first deploy, so every restart
+	 * short-circuited before ever calling constructReportDefinition() again. Confirmed from
+	 * ReportManagerUtil's decompiled bytecode, not assumed.
+	 */
 	@Override
 	public String getVersion() {
-		return "1.0";
+		return "1.1";
 	}
 	
 	@Override

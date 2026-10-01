@@ -53,7 +53,7 @@ public class AttendanceDataSetBuilder {
 		sql.append("    SELECT v.patient_id, v.date_started AS event_date, vt.name AS visit_type_name\n");
 		sql.append("    FROM visit v\n");
 		sql.append("    JOIN visit_type vt ON vt.visit_type_id = v.visit_type_id\n");
-		sql.append("    WHERE v.voided = 0 AND v.date_started BETWEEN :startDate AND :endDate\n");
+		sql.append("    WHERE v.voided = 0 AND v.date_started >= :startDate AND v.date_started < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
 		sql.append("  ) ev\n");
 		sql.append("  JOIN person p ON p.person_id = ev.patient_id AND p.voided = 0\n");
 		sql.append(") x");

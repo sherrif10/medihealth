@@ -55,7 +55,7 @@ public class PostnatalCareDataSetBuilder {
 		sql.append("  FROM encounter e\n");
 		sql.append("  JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
 		sql.append("  WHERE e.voided = 0 AND et.name = 'Postnatal Care Visit'\n");
-		sql.append("    AND e.encounter_datetime BETWEEN :startDate AND :endDate\n");
+		sql.append("    AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
 		sql.append(") ev");
 		BooleanObsIndicatorFactory.appendJoins(sql, "ev", FLAG_COLUMNS);
 		return sql.toString();
