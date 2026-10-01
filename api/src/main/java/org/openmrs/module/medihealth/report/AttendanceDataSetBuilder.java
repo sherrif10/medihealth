@@ -42,7 +42,7 @@ public class AttendanceDataSetBuilder {
 	private String buildSql() {
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT COUNT(*) AS general_attendance_total,\n");
-		sql.append("  SUM(CASE WHEN visit_type_name = 'OPD Visit' THEN 1 ELSE 0 END) AS outpatient_attendance_total");
+		sql.append("  COUNT(CASE WHEN visit_type_name = 'OPD Visit' THEN 1 END) AS outpatient_attendance_total");
 		AgeSexColumnFactory.appendColumns(sql, "general_attendance", null);
 		AgeSexColumnFactory.appendColumns(sql, "outpatient_attendance", "visit_type_name = 'OPD Visit'");
 		sql.append("\nFROM (\n");

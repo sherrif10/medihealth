@@ -78,16 +78,16 @@ public class NewbornDataSetBuilder {
 		
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT COUNT(*) AS newborn_encounters_total");
-		sql.append(",\n  SUM(CASE WHEN ").append(live).append(" AND ").append(male)
-		        .append(" AND o_weight.value_numeric < 2.5 THEN 1 ELSE 0 END) AS live_births_male_lt2_5kg");
-		sql.append(",\n  SUM(CASE WHEN ").append(live).append(" AND ").append(male)
-		        .append(" AND o_weight.value_numeric >= 2.5 THEN 1 ELSE 0 END) AS live_births_male_gte2_5kg");
-		sql.append(",\n  SUM(CASE WHEN ").append(live).append(" AND ").append(female)
-		        .append(" AND o_weight.value_numeric < 2.5 THEN 1 ELSE 0 END) AS live_births_female_lt2_5kg");
-		sql.append(",\n  SUM(CASE WHEN ").append(live).append(" AND ").append(female)
-		        .append(" AND o_weight.value_numeric >= 2.5 THEN 1 ELSE 0 END) AS live_births_female_gte2_5kg");
-		sql.append(",\n  SUM(CASE WHEN ").append(live).append(" AND ").append(hiv)
-		        .append(" THEN 1 ELSE 0 END) AS live_births_to_hiv_positive_mothers");
+		sql.append(",\n  COUNT(CASE WHEN ").append(live).append(" AND ").append(male)
+		        .append(" AND o_weight.value_numeric < 2.5 THEN 1 END) AS live_births_male_lt2_5kg");
+		sql.append(",\n  COUNT(CASE WHEN ").append(live).append(" AND ").append(male)
+		        .append(" AND o_weight.value_numeric >= 2.5 THEN 1 END) AS live_births_male_gte2_5kg");
+		sql.append(",\n  COUNT(CASE WHEN ").append(live).append(" AND ").append(female)
+		        .append(" AND o_weight.value_numeric < 2.5 THEN 1 END) AS live_births_female_lt2_5kg");
+		sql.append(",\n  COUNT(CASE WHEN ").append(live).append(" AND ").append(female)
+		        .append(" AND o_weight.value_numeric >= 2.5 THEN 1 END) AS live_births_female_gte2_5kg");
+		sql.append(",\n  COUNT(CASE WHEN ").append(live).append(" AND ").append(hiv)
+		        .append(" THEN 1 END) AS live_births_to_hiv_positive_mothers");
 		BooleanObsIndicatorFactory.appendSelectColumns(sql, FLAG_COLUMNS);
 		
 		sql.append("\nFROM (\n");
