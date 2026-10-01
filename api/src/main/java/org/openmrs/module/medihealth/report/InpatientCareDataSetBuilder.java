@@ -49,7 +49,7 @@ public class InpatientCareDataSetBuilder {
 		sql.append("    FROM encounter e\n");
 		sql.append("    JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
 		sql.append("    WHERE e.voided = 0 AND et.name IN ('Admission', 'Discharge')\n");
-		sql.append("      AND e.encounter_datetime BETWEEN :startDate AND :endDate\n");
+		sql.append("      AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
 		sql.append("  ) ev\n");
 		sql.append("  JOIN person p ON p.person_id = ev.patient_id AND p.voided = 0\n");
 		sql.append(") x");

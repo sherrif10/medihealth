@@ -65,6 +65,39 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 	@Autowired
 	private BirthRegistrationDataSetBuilder birthRegistrationDataSetBuilder;
 	
+	@Autowired
+	private NutritionDataSetBuilder nutritionDataSetBuilder;
+	
+	@Autowired
+	private ChildHealthDataSetBuilder childHealthDataSetBuilder;
+	
+	@Autowired
+	private FamilyPlanningDataSetBuilder familyPlanningDataSetBuilder;
+	
+	@Autowired
+	private ReferralsDataSetBuilder referralsDataSetBuilder;
+	
+	@Autowired
+	private NcdDataSetBuilder ncdDataSetBuilder;
+	
+	@Autowired
+	private MalariaDataSetBuilder malariaDataSetBuilder;
+	
+	@Autowired
+	private TbScreeningDataSetBuilder tbScreeningDataSetBuilder;
+	
+	@Autowired
+	private HepatitisDataSetBuilder hepatitisDataSetBuilder;
+	
+	@Autowired
+	private GbvDataSetBuilder gbvDataSetBuilder;
+	
+	@Autowired
+	private ObstetricFistulaDataSetBuilder obstetricFistulaDataSetBuilder;
+	
+	@Autowired
+	private NtdPharmacovigilanceDataSetBuilder ntdPharmacovigilanceDataSetBuilder;
+	
 	@Override
 	public String getUuid() {
 		return UUID;
@@ -82,7 +115,7 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 	
 	@Override
 	public String getVersion() {
-		return "1.0";
+		return "1.2";
 	}
 	
 	@Override
@@ -103,6 +136,17 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 		addPeriodDataSet(rd, "newborn", newbornDataSetBuilder.build());
 		addPeriodDataSet(rd, "immunization", immunizationDataSetBuilder.build());
 		addPeriodDataSet(rd, "birthRegistration", birthRegistrationDataSetBuilder.build());
+		addPeriodDataSet(rd, "nutrition", nutritionDataSetBuilder.build());
+		addPeriodDataSet(rd, "childHealth", childHealthDataSetBuilder.build());
+		addPeriodDataSet(rd, "familyPlanning", familyPlanningDataSetBuilder.build());
+		addPeriodDataSet(rd, "referrals", referralsDataSetBuilder.build());
+		addPeriodDataSet(rd, "ncd", ncdDataSetBuilder.build());
+		addPeriodDataSet(rd, "malaria", malariaDataSetBuilder.build());
+		addPeriodDataSet(rd, "tbScreening", tbScreeningDataSetBuilder.build());
+		addPeriodDataSet(rd, "hepatitis", hepatitisDataSetBuilder.build());
+		addPeriodDataSet(rd, "gbv", gbvDataSetBuilder.build());
+		addPeriodDataSet(rd, "obstetricFistula", obstetricFistulaDataSetBuilder.build());
+		addPeriodDataSet(rd, "ntdPharmacovigilance", ntdPharmacovigilanceDataSetBuilder.build());
 		return rd;
 	}
 	
