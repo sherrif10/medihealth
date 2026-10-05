@@ -60,7 +60,7 @@ public class LabourDeliveryDataSetBuilder {
 	private String buildSql() {
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT COUNT(*) AS deliveries_total");
-		sql.append(",\n  SUM(CASE WHEN age_years BETWEEN 10 AND 19 THEN 1 ELSE 0 END) AS deliveries_adolescent_mother");
+		sql.append(",\n  COUNT(CASE WHEN age_years BETWEEN 10 AND 19 THEN 1 END) AS deliveries_adolescent_mother");
 		BooleanObsIndicatorFactory.appendSelectColumns(sql, FLAG_COLUMNS);
 		
 		sql.append("\nFROM (\n");

@@ -43,7 +43,7 @@ public class AgeSexColumnFactory {
 				if (extraCondition != null) {
 					condition += " AND " + extraCondition;
 				}
-				sql.append(",\n  SUM(CASE WHEN ").append(condition).append(" THEN 1 ELSE 0 END) AS ")
+				sql.append(",\n  COUNT(CASE WHEN ").append(condition).append(" THEN 1 END) AS ")
 				        .append(columnAlias(rowPrefix, sex, band));
 			}
 		}

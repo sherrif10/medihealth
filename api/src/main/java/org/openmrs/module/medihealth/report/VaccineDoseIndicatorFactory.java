@@ -38,8 +38,8 @@ public class VaccineDoseIndicatorFactory {
 	}
 	
 	private static void appendColumn(StringBuilder sql, VaccineDoseColumn c, String ageBand, String locationBand) {
-		sql.append(",\n  SUM(CASE WHEN vaccine_uuid = '").append(c.vaccineConceptUuid).append("' AND age_band = '")
-		        .append(ageBand).append("' AND location_band = '").append(locationBand).append("' THEN 1 ELSE 0 END) AS ")
+		sql.append(",\n  COUNT(CASE WHEN vaccine_uuid = '").append(c.vaccineConceptUuid).append("' AND age_band = '")
+		        .append(ageBand).append("' AND location_band = '").append(locationBand).append("' THEN 1 END) AS ")
 		        .append(c.rowPrefix).append('_').append(ageBand.equals(UNDER_1YR) ? "lt1yr" : "gte1yr").append('_')
 		        .append(locationBand.toLowerCase());
 	}

@@ -44,10 +44,10 @@ public class MortalityDataSetBuilder {
 		// Row 6: maternal mortality, female only, by 10-19yrs / >=20yrs, cause in the maternal set
 		String maternalCauseFilter = "sex = 'Female' AND cause_of_death_uuid IN ("
 		        + CauseOfDeathConcepts.quotedInClause(CauseOfDeathConcepts.MATERNAL_CAUSES) + ")";
-		sql.append(",\n  SUM(CASE WHEN ").append(maternalCauseFilter)
-		        .append(" AND age_at_death_years < 20 THEN 1 ELSE 0 END) AS maternal_deaths_10_19yrs");
-		sql.append(",\n  SUM(CASE WHEN ").append(maternalCauseFilter)
-		        .append(" AND age_at_death_years >= 20 THEN 1 ELSE 0 END) AS maternal_deaths_gte20yrs");
+		sql.append(",\n  COUNT(CASE WHEN ").append(maternalCauseFilter)
+		        .append(" AND age_at_death_years < 20 THEN 1 END) AS maternal_deaths_10_19yrs");
+		sql.append(",\n  COUNT(CASE WHEN ").append(maternalCauseFilter)
+		        .append(" AND age_at_death_years >= 20 THEN 1 END) AS maternal_deaths_gte20yrs");
 		// Row 7: confirmed maternal deaths by individual cause
 		appendCauseColumns(sql, "maternal_death", "sex = 'Female'", CauseOfDeathConcepts.MATERNAL_CAUSES, new String[] {
 		        "postpartum_haemorrhage", "sepsis", "obstructed_labour", "abortion", "malaria", "anaemia", "hiv", "other" });
@@ -76,16 +76,15 @@ public class MortalityDataSetBuilder {
 	}
 	
 	/**
-	 * Appends one SUM(...) column per cause in {@code causeUuids}, each counting rows matching
+	 * Appends one COUNT(...) column per cause in {@code causeUuids}, each counting rows matching
 	 * {@code baseFilter} and that specific cause, plus one "other"-labelled combined column isn't
 	 * needed since "Other" is itself one of the passed-in causes/labels.
 	 */
 	private void appendCauseColumns(StringBuilder sql, String rowPrefix, String baseFilter, String[] causeUuids,
 	        String[] causeLabels) {
 		for (int i = 0; i < causeUuids.length; i++) {
-			sql.append(",\n  SUM(CASE WHEN ").append(baseFilter).append(" AND cause_of_death_uuid = '")
-			        .append(causeUuids[i]).append("' THEN 1 ELSE 0 END) AS ").append(rowPrefix).append('_')
-			        .append(causeLabels[i]);
+			sql.append(",\n  COUNT(CASE WHEN ").append(baseFilter).append(" AND cause_of_death_uuid = '")
+			        .append(causeUuids[i]).append("' THEN 1 END) AS ").append(rowPrefix).append('_').append(causeLabels[i]);
 		}
 	}
 }

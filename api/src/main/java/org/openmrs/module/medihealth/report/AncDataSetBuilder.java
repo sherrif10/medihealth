@@ -73,13 +73,13 @@ public class AncDataSetBuilder {
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT COUNT(*) AS anc_attendance_total");
 		for (String band : Arrays.asList("10-14yrs", "15-19yrs", "20-35yrs", "35-49yrs", ">=50yrs")) {
-			sql.append(",\n  SUM(CASE WHEN age_band = '").append(band).append("' THEN 1 ELSE 0 END) AS anc_attendance_")
+			sql.append(",\n  COUNT(CASE WHEN age_band = '").append(band).append("' THEN 1 END) AS anc_attendance_")
 			        .append(band.toLowerCase().replace(">=", "gte").replace("-", "_"));
 		}
-		sql.append(",\n  SUM(CASE WHEN o_first.value_coded = ").append(BooleanObsIndicatorFactory.TRUE_CONCEPT_ID_SQL)
-		        .append(" AND o_ga.value_numeric < 20 THEN 1 ELSE 0 END) AS anc_first_visit_ga_lt20wks");
-		sql.append(",\n  SUM(CASE WHEN o_first.value_coded = ").append(BooleanObsIndicatorFactory.TRUE_CONCEPT_ID_SQL)
-		        .append(" AND o_ga.value_numeric >= 20 THEN 1 ELSE 0 END) AS anc_first_visit_ga_gte20wks");
+		sql.append(",\n  COUNT(CASE WHEN o_first.value_coded = ").append(BooleanObsIndicatorFactory.TRUE_CONCEPT_ID_SQL)
+		        .append(" AND o_ga.value_numeric < 20 THEN 1 END) AS anc_first_visit_ga_lt20wks");
+		sql.append(",\n  COUNT(CASE WHEN o_first.value_coded = ").append(BooleanObsIndicatorFactory.TRUE_CONCEPT_ID_SQL)
+		        .append(" AND o_ga.value_numeric >= 20 THEN 1 END) AS anc_first_visit_ga_gte20wks");
 		BooleanObsIndicatorFactory.appendSelectColumns(sql, FLAG_COLUMNS);
 		
 		sql.append("\nFROM (\n");

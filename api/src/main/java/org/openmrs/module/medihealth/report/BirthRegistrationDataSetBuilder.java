@@ -44,15 +44,15 @@ public class BirthRegistrationDataSetBuilder {
 		
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT COUNT(*) AS registered_total");
-		sql.append(",\n  SUM(CASE WHEN sex = 'Male' THEN 1 ELSE 0 END) AS registered_male");
-		sql.append(",\n  SUM(CASE WHEN sex = 'Female' THEN 1 ELSE 0 END) AS registered_female");
-		sql.append(",\n  SUM(CASE WHEN ").append(issuedTrue).append(" AND sex = 'Male' THEN 1 ELSE 0 END)")
+		sql.append(",\n  COUNT(CASE WHEN sex = 'Male' THEN 1 END) AS registered_male");
+		sql.append(",\n  COUNT(CASE WHEN sex = 'Female' THEN 1 END) AS registered_female");
+		sql.append(",\n  COUNT(CASE WHEN ").append(issuedTrue).append(" AND sex = 'Male' THEN 1 END)")
 		        .append(" AS certificate_issued_male");
-		sql.append(",\n  SUM(CASE WHEN ").append(issuedTrue).append(" AND sex = 'Female' THEN 1 ELSE 0 END)")
+		sql.append(",\n  COUNT(CASE WHEN ").append(issuedTrue).append(" AND sex = 'Female' THEN 1 END)")
 		        .append(" AS certificate_issued_female");
-		sql.append(",\n  SUM(CASE WHEN ").append(collectedTrue).append(" AND sex = 'Male' THEN 1 ELSE 0 END)")
+		sql.append(",\n  COUNT(CASE WHEN ").append(collectedTrue).append(" AND sex = 'Male' THEN 1 END)")
 		        .append(" AS certificate_collected_male");
-		sql.append(",\n  SUM(CASE WHEN ").append(collectedTrue).append(" AND sex = 'Female' THEN 1 ELSE 0 END)")
+		sql.append(",\n  COUNT(CASE WHEN ").append(collectedTrue).append(" AND sex = 'Female' THEN 1 END)")
 		        .append(" AS certificate_collected_female");
 		
 		sql.append("\nFROM (\n");
