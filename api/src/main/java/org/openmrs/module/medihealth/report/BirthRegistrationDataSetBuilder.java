@@ -9,10 +9,7 @@
  */
 package org.openmrs.module.medihealth.report;
 
-import java.util.Date;
-
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
-import org.openmrs.module.reporting.evaluation.parameter.Parameter;
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,8 +29,7 @@ public class BirthRegistrationDataSetBuilder {
 		SqlDataSetDefinition dsd = new SqlDataSetDefinition();
 		dsd.setName("NHMIS - Birth Registration");
 		dsd.setDescription("Form rows 91-93: children under 1 year registered, birth certificate issued/collected");
-		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
-		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		NhmisSql.addParameters(dsd);
 		dsd.setSqlQuery(buildSql());
 		return dsd;
 	}
@@ -63,6 +59,7 @@ public class BirthRegistrationDataSetBuilder {
 		sql.append("    JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
 		sql.append("    WHERE e.voided = 0 AND et.name = 'Birth Registration'\n");
 		sql.append("      AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
+		sql.append("      AND ").append(NhmisSql.atFacility("e.location_id")).append("\n");
 		sql.append("  ) ev\n");
 		sql.append("  JOIN person p ON p.person_id = ev.patient_id AND p.voided = 0\n");
 		sql.append(") x\n");

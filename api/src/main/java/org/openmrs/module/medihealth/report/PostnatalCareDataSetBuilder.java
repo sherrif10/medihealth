@@ -10,11 +10,9 @@
 package org.openmrs.module.medihealth.report;
 
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
-import org.openmrs.module.reporting.evaluation.parameter.Parameter;
 import org.springframework.stereotype.Component;
 
 /**
@@ -40,8 +38,7 @@ public class PostnatalCareDataSetBuilder {
 		SqlDataSetDefinition dsd = new SqlDataSetDefinition();
 		dsd.setName("NHMIS - Postnatal Care");
 		dsd.setDescription("Form row 47: postnatal clinic visits for mothers and newborns, by day band");
-		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
-		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		NhmisSql.addParameters(dsd);
 		dsd.setSqlQuery(buildSql());
 		return dsd;
 	}
@@ -56,6 +53,7 @@ public class PostnatalCareDataSetBuilder {
 		sql.append("  JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
 		sql.append("  WHERE e.voided = 0 AND et.name = 'Postnatal Care Visit'\n");
 		sql.append("    AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
+		sql.append("    AND ").append(NhmisSql.atFacility("e.location_id")).append("\n");
 		sql.append(") ev");
 		BooleanObsIndicatorFactory.appendJoins(sql, "ev", FLAG_COLUMNS);
 		return sql.toString();

@@ -115,7 +115,7 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 	
 	@Override
 	public String getVersion() {
-		return "1.5";
+		return "1.8";
 	}
 	
 	@Override
@@ -126,6 +126,8 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 		rd.setDescription(getDescription());
 		rd.addParameter(new Parameter("startDate", "Start Date", Date.class));
 		rd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		// The PHC the form is for
+		rd.addParameter(NhmisSql.facilityParameter());
 		
 		addPeriodDataSet(rd, "attendance", attendanceDataSetBuilder.build());
 		addPeriodDataSet(rd, "inpatientCare", inpatientCareDataSetBuilder.build());
@@ -153,7 +155,8 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 	private void addPeriodDataSet(ReportDefinition rd, String key,
 	        org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition dsd) {
 		rd.addDataSetDefinition(key,
-		    new Mapped<>(dsd, ParameterizableUtil.createParameterMappings("startDate=${startDate},endDate=${endDate}")));
+		    new Mapped<>(dsd, ParameterizableUtil
+		            .createParameterMappings("startDate=${startDate},endDate=${endDate},location=${location}")));
 	}
 	
 	@Override

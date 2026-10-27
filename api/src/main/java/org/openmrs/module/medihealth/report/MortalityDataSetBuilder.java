@@ -9,10 +9,7 @@
  */
 package org.openmrs.module.medihealth.report;
 
-import java.util.Date;
-
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
-import org.openmrs.module.reporting.evaluation.parameter.Parameter;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,8 +26,7 @@ public class MortalityDataSetBuilder {
 		SqlDataSetDefinition dsd = new SqlDataSetDefinition();
 		dsd.setName("NHMIS - Mortality");
 		dsd.setDescription("Form rows 5-9: deaths by age/sex, maternal mortality, and causes of maternal/neonatal/under-5 death");
-		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
-		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		NhmisSql.addParameters(dsd);
 		dsd.setSqlQuery(buildSql());
 		return dsd;
 	}
@@ -68,6 +64,9 @@ public class MortalityDataSetBuilder {
 		sql.append("    SELECT person_id, death_date AS event_date, cause_of_death AS cause_of_death_concept_id\n");
 		sql.append("    FROM person\n");
 		sql.append("    WHERE dead = 1 AND voided = 0 AND death_date >= :startDate AND death_date < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
+		sql.append("      AND ")
+		        .append(NhmisSql.atFacility(NhmisSql.patientLocationAt("person.person_id", "person.death_date")))
+		        .append("\n");
 		sql.append("  ) ev\n");
 		sql.append("  JOIN person p ON p.person_id = ev.person_id\n");
 		sql.append("  LEFT JOIN concept c ON c.concept_id = ev.cause_of_death_concept_id\n");

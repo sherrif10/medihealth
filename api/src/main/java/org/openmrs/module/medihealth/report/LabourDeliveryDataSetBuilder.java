@@ -10,11 +10,9 @@
 package org.openmrs.module.medihealth.report;
 
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
-import org.openmrs.module.reporting.evaluation.parameter.Parameter;
 import org.springframework.stereotype.Component;
 
 /**
@@ -51,8 +49,7 @@ public class LabourDeliveryDataSetBuilder {
 		SqlDataSetDefinition dsd = new SqlDataSetDefinition();
 		dsd.setName("NHMIS - Labour and Delivery");
 		dsd.setDescription("Form rows 34-46: admission, delivery mode/complications, medication, abortion/PAC");
-		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
-		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		NhmisSql.addParameters(dsd);
 		dsd.setSqlQuery(buildSql());
 		return dsd;
 	}
@@ -71,6 +68,7 @@ public class LabourDeliveryDataSetBuilder {
 		sql.append("    JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
 		sql.append("    WHERE e.voided = 0 AND et.name = 'Labour and Delivery'\n");
 		sql.append("      AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
+		sql.append("      AND ").append(NhmisSql.atFacility("e.location_id")).append("\n");
 		sql.append("  ) ev\n");
 		sql.append("  JOIN person p ON p.person_id = ev.patient_id AND p.voided = 0\n");
 		sql.append(") x");

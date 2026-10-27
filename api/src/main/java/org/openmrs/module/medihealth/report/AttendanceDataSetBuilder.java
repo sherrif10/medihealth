@@ -9,10 +9,7 @@
  */
 package org.openmrs.module.medihealth.report;
 
-import java.util.Date;
-
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
-import org.openmrs.module.reporting.evaluation.parameter.Parameter;
 import org.springframework.stereotype.Component;
 
 /**
@@ -33,8 +30,7 @@ public class AttendanceDataSetBuilder {
 		SqlDataSetDefinition dsd = new SqlDataSetDefinition();
 		dsd.setName("NHMIS - Health Facility Attendance");
 		dsd.setDescription("Form rows 1-2: General Attendance and Out-patient Attendance by sex and age band");
-		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
-		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		NhmisSql.addParameters(dsd);
 		dsd.setSqlQuery(buildSql());
 		return dsd;
 	}
@@ -54,6 +50,7 @@ public class AttendanceDataSetBuilder {
 		sql.append("    FROM visit v\n");
 		sql.append("    JOIN visit_type vt ON vt.visit_type_id = v.visit_type_id\n");
 		sql.append("    WHERE v.voided = 0 AND v.date_started >= :startDate AND v.date_started < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
+		sql.append("      AND ").append(NhmisSql.atFacility("v.location_id")).append("\n");
 		sql.append("  ) ev\n");
 		sql.append("  JOIN person p ON p.person_id = ev.patient_id AND p.voided = 0\n");
 		sql.append(") x");
