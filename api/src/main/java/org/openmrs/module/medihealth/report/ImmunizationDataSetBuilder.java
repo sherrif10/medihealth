@@ -9,12 +9,11 @@
  */
 package org.openmrs.module.medihealth.report;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
-import org.openmrs.module.reporting.evaluation.parameter.Parameter;
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,6 +31,11 @@ import org.springframework.stereotype.Component;
  * off a sibling obs in the same obs group) and pregnancy status, using dedicated
  * TD-Pregnant/TD-Non-Pregnant answer concepts rather than trying to infer pregnancy status, which
  * isn't otherwise captured on this encounter.
+ * <p>
+ * Doses recorded in the patient chart's Immunizations widget (encounter type "Immunizations", one
+ * obs group per dose with the CIEL vaccine, date given and dose number) count too: each is turned
+ * into the NHMIS row it belongs to by {@link #widgetDoseRow()}. A dose recorded both ways for the
+ * same patient on the same day counts once.
  */
 @Component("medihealth.ImmunizationDataSetBuilder")
 public class ImmunizationDataSetBuilder {
@@ -45,6 +49,44 @@ public class ImmunizationDataSetBuilder {
 	private static final String TD_PREGNANT_CONCEPT = "c5f21be9-02e6-4924-9d93-33c0a12ab4bf";
 	
 	private static final String TD_NON_PREGNANT_CONCEPT = "f3448db1-1bc9-4622-ba08-e1192e4eaaf9";
+	
+	// The Immunizations widget's obs group: CIEL immunizations (the vaccine), vaccination date, dose number
+	private static final String WIDGET_VACCINE_CONCEPT = "984AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final String WIDGET_DATE_GIVEN_CONCEPT = "1410AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final String WIDGET_DOSE_NUMBER_CONCEPT = "1418AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	// CIEL vaccines offered by the widget (answers of CIEL 984)
+	private static final String CIEL_OPV = "783AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final String CIEL_HEPB = "782AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final String CIEL_BCG = "886AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final String CIEL_PENTAVALENT = "162339AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final String CIEL_DTP = "781AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final String CIEL_PNEUMOCOCCAL = "82215AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	/** Named "Pentavalent pneumovax" on QA, but CIEL 1423 is a pneumococcal vaccine. */
+	private static final String CIEL_PNEUMOVAX = "1423AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final String CIEL_ROTAVIRUS = "83531AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final String CIEL_IPV = "1422AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final String CIEL_VITAMIN_A = "86339AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+	
+	private static final List<String> CIEL_MEASLES = Arrays.asList("36AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+	    "162586AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "159701AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+	
+	private static final List<String> CIEL_TETANUS = Arrays.asList("84879AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+	    "54AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "17AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+	
+	/** OPV and Hepatitis B given in the first two weeks of life are the birth doses (OPV0, HepB0). */
+	private static final int BIRTH_DOSE_DAYS = 14;
 	
 	/** Rows 65-82, 84-87: standard EPI antigens, each split by age band x delivery location. */
 	private static final List<VaccineDoseColumn> ANTIGEN_COLUMNS = Arrays.asList(new VaccineDoseColumn("opv0",
@@ -86,8 +128,7 @@ public class ImmunizationDataSetBuilder {
 		SqlDataSetDefinition dsd = new SqlDataSetDefinition();
 		dsd.setName("NHMIS - Immunization");
 		dsd.setDescription("Form rows 63-90: Tetanus Diphtheria, EPI antigens by age/location, AEFI reporting");
-		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
-		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		NhmisSql.addParameters(dsd);
 		dsd.setSqlQuery(buildSql());
 		return dsd;
 	}
@@ -106,43 +147,131 @@ public class ImmunizationDataSetBuilder {
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT COUNT(*) AS doses_total");
 		for (String dose : Arrays.asList("1", "2", "3", "4", "5")) {
-			sql.append(",\n  SUM(CASE WHEN vaccine_uuid = '").append(TD_PREGNANT_CONCEPT).append("' AND td_dose_number = ")
-			        .append(dose).append(" THEN 1 ELSE 0 END) AS td_pregnant_dose").append(dose);
+			sql.append(",\n  COUNT(CASE WHEN vaccine_uuid = '").append(TD_PREGNANT_CONCEPT)
+			        .append("' AND td_dose_number = ").append(dose).append(" THEN 1 END) AS td_pregnant_dose").append(dose);
 		}
 		for (String dose : Arrays.asList("1", "2", "3", "4", "5")) {
-			sql.append(",\n  SUM(CASE WHEN vaccine_uuid = '").append(TD_NON_PREGNANT_CONCEPT)
-			        .append("' AND td_dose_number = ").append(dose).append(" THEN 1 ELSE 0 END) AS td_non_pregnant_dose")
+			sql.append(",\n  COUNT(CASE WHEN vaccine_uuid = '").append(TD_NON_PREGNANT_CONCEPT)
+			        .append("' AND td_dose_number = ").append(dose).append(" THEN 1 END) AS td_non_pregnant_dose")
 			        .append(dose);
 		}
 		VaccineDoseIndicatorFactory.appendSelectColumns(sql, ANTIGEN_COLUMNS);
-		sql.append(",\n  SUM(CASE WHEN vaccine_uuid = '").append(FULLY_IMMUNIZED_UNDER1_CONCEPT)
-		        .append("' AND location_band = 'Fixed' THEN 1 ELSE 0 END) AS fully_immunized_lt1yr_fixed");
-		sql.append(",\n  SUM(CASE WHEN vaccine_uuid = '").append(FULLY_IMMUNIZED_UNDER1_CONCEPT)
-		        .append("' AND location_band = 'Outreach' THEN 1 ELSE 0 END) AS fully_immunized_lt1yr_outreach");
+		sql.append(",\n  COUNT(CASE WHEN vaccine_uuid = '").append(FULLY_IMMUNIZED_UNDER1_CONCEPT)
+		        .append("' AND location_band = 'Fixed' THEN 1 END) AS fully_immunized_lt1yr_fixed");
+		sql.append(",\n  COUNT(CASE WHEN vaccine_uuid = '").append(FULLY_IMMUNIZED_UNDER1_CONCEPT)
+		        .append("' AND location_band = 'Outreach' THEN 1 END) AS fully_immunized_lt1yr_outreach");
 		
+		// One row per dose: the same dose recorded on the form and in the widget on one day counts once
 		sql.append("\nFROM (\n");
-		sql.append("  SELECT o.encounter_id, vc.uuid AS vaccine_uuid,\n");
-		sql.append("    CASE WHEN TIMESTAMPDIFF(YEAR, p.birthdate, e.encounter_datetime) < 1 THEN '")
+		sql.append("  SELECT DISTINCT d.patient_id, d.vaccine_uuid, DATE(d.given) AS given_day,\n");
+		sql.append("    CASE WHEN TIMESTAMPDIFF(YEAR, d.birthdate, d.given) < 1 THEN '")
 		        .append(VaccineDoseIndicatorFactory.UNDER_1YR).append("' ELSE '")
 		        .append(VaccineDoseIndicatorFactory.OVER_1YR).append("' END AS age_band,\n");
-		sql.append("    CASE WHEN l.name = 'Mobile Clinic' THEN '").append(VaccineDoseIndicatorFactory.OUTREACH)
+		sql.append("    CASE WHEN d.location_name = 'Mobile Clinic' THEN '").append(VaccineDoseIndicatorFactory.OUTREACH)
 		        .append("' ELSE '").append(VaccineDoseIndicatorFactory.FIXED).append("' END AS location_band,\n");
-		sql.append("    td.value_numeric AS td_dose_number\n");
-		sql.append("  FROM obs o\n");
-		sql.append("  JOIN concept vc ON vc.concept_id = o.value_coded\n");
-		sql.append("  JOIN encounter e ON e.encounter_id = o.encounter_id\n");
-		sql.append("  JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
-		sql.append("  JOIN person p ON p.person_id = e.patient_id AND p.voided = 0\n");
-		sql.append("  JOIN location l ON l.location_id = e.location_id\n");
-		sql.append("  LEFT JOIN obs td ON td.obs_group_id = o.obs_group_id AND td.voided = 0\n");
-		sql.append("    AND td.concept_id = (SELECT concept_id FROM concept WHERE uuid = '").append(TD_DOSE_NUMBER_CONCEPT)
-		        .append("')\n");
-		sql.append("  WHERE o.voided = 0 AND e.voided = 0 AND et.name = 'Immunization Record'\n");
-		sql.append("    AND o.concept_id = (SELECT concept_id FROM concept WHERE uuid = '")
-		        .append(VACCINE_ADMINISTERED_CONCEPT).append("')\n");
-		sql.append("    AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
+		sql.append("    d.td_dose_number\n");
+		sql.append("  FROM (\n");
+		sql.append(NhmisSql.union(formDosesSql(), widgetDosesSql()));
+		sql.append("\n  ) d\n");
+		sql.append("  WHERE d.vaccine_uuid IS NOT NULL\n");
 		sql.append("  ) x");
 		return sql.toString();
+	}
+	
+	/** Doses on the "Immunization Record" form: the answer is already the NHMIS row's concept. */
+	private String formDosesSql() {
+		return "SELECT o.person_id AS patient_id, vc.uuid AS vaccine_uuid, e.encounter_datetime AS given, p.birthdate, "
+		        + "l.name AS location_name, td.value_numeric AS td_dose_number FROM obs o "
+		        + "JOIN concept vc ON vc.concept_id = o.value_coded "
+		        + "JOIN encounter e ON e.encounter_id = o.encounter_id "
+		        + "JOIN encounter_type et ON et.encounter_type_id = e.encounter_type "
+		        + "JOIN person p ON p.person_id = e.patient_id AND p.voided = 0 "
+		        + "JOIN location l ON l.location_id = e.location_id "
+		        + "LEFT JOIN obs td ON td.obs_group_id = o.obs_group_id AND td.voided = 0 AND td.concept_id = "
+		        + NhmisSql.conceptId(TD_DOSE_NUMBER_CONCEPT) + " "
+		        + "WHERE o.voided = 0 AND e.voided = 0 AND et.name = 'Immunization Record' AND o.concept_id = "
+		        + NhmisSql.conceptId(VACCINE_ADMINISTERED_CONCEPT) + " AND " + NhmisSql.inPeriod("e.encounter_datetime")
+		        + " AND " + NhmisSql.atFacility("e.location_id");
+	}
+	
+	/**
+	 * Doses in the Immunizations widget, dated by their vaccination date (else the encounter date),
+	 * with the vaccine turned into the NHMIS row's concept by {@link #widgetDoseRow()}.
+	 */
+	private String widgetDosesSql() {
+		return "SELECT w.patient_id, " + widgetDoseRow() + " AS vaccine_uuid, w.given, w.birthdate, w.location_name, "
+		        + "CASE WHEN w.vaccine IN " + quoted(CIEL_TETANUS) + " AND w.seq BETWEEN 1 AND 5 THEN w.seq END "
+		        + "AS td_dose_number FROM (SELECT o.person_id AS patient_id, vc.uuid AS vaccine, "
+		        + "COALESCE(dg.value_datetime, e.encounter_datetime) AS given, COALESCE(sq.value_numeric, 1) AS seq, "
+		        + "p.birthdate, l.name AS location_name FROM obs o " + "JOIN concept vc ON vc.concept_id = o.value_coded "
+		        + "JOIN encounter e ON e.encounter_id = o.encounter_id AND e.voided = 0 "
+		        + "JOIN person p ON p.person_id = o.person_id AND p.voided = 0 "
+		        + "JOIN location l ON l.location_id = e.location_id "
+		        + "LEFT JOIN obs dg ON dg.obs_group_id = o.obs_group_id AND dg.voided = 0 AND dg.concept_id = "
+		        + NhmisSql.conceptId(WIDGET_DATE_GIVEN_CONCEPT) + " "
+		        + "LEFT JOIN obs sq ON sq.obs_group_id = o.obs_group_id AND sq.voided = 0 AND sq.concept_id = "
+		        + NhmisSql.conceptId(WIDGET_DOSE_NUMBER_CONCEPT) + " "
+		        + "WHERE o.voided = 0 AND o.obs_group_id IS NOT NULL AND o.concept_id = "
+		        + NhmisSql.conceptId(WIDGET_VACCINE_CONCEPT) + " AND " + NhmisSql.atFacility("e.location_id") + ") w WHERE "
+		        + NhmisSql.inPeriod("w.given");
+	}
+	
+	/**
+	 * The NHMIS row (its vaccine-answer concept uuid) of a widget dose, from the CIEL vaccine
+	 * {@code w.vaccine}, dose number {@code w.seq} and the child's age in days; NULL when the form
+	 * has no row for it (e.g. OPV dose 4, boosters). A vaccine that is itself an NHMIS row concept
+	 * counts as that row.
+	 */
+	private String widgetDoseRow() {
+		String age = "DATEDIFF(w.given, w.birthdate)";
+		List<String> rowConcepts = new ArrayList<String>();
+		for (VaccineDoseColumn c : ANTIGEN_COLUMNS) {
+			rowConcepts.add(c.vaccineConceptUuid);
+		}
+		StringBuilder sql = new StringBuilder("CASE");
+		sql.append(" WHEN w.vaccine IN ").append(quoted(rowConcepts)).append(" THEN w.vaccine");
+		sql.append(" WHEN w.vaccine = '").append(CIEL_OPV).append("' AND ").append(age).append(" < ")
+		        .append(BIRTH_DOSE_DAYS).append(" THEN '").append(antigen("opv0")).append('\'');
+		sql.append(" WHEN w.vaccine = '").append(CIEL_HEPB).append("' AND ").append(age).append(" < ")
+		        .append(BIRTH_DOSE_DAYS).append(" THEN '").append(antigen("hepb0")).append('\'');
+		sql.append(" WHEN w.vaccine = '").append(CIEL_BCG).append("' THEN '").append(antigen("bcg")).append('\'');
+		sql.append(" WHEN w.vaccine = '").append(CIEL_IPV).append("' THEN '").append(antigen("ipv")).append('\'');
+		sql.append(" WHEN w.vaccine = '").append(CIEL_VITAMIN_A).append("' THEN '").append(antigen("vitamin_a"))
+		        .append('\'');
+		appendDoses(sql, Arrays.asList(CIEL_OPV), "opv", 3);
+		appendDoses(sql, Arrays.asList(CIEL_PENTAVALENT, CIEL_DTP), "penta", 3);
+		appendDoses(sql, Arrays.asList(CIEL_PNEUMOCOCCAL, CIEL_PNEUMOVAX), "pcv", 3);
+		appendDoses(sql, Arrays.asList(CIEL_ROTAVIRUS), "rota", 3);
+		appendDoses(sql, CIEL_MEASLES, "measles", 2);
+		sql.append(" WHEN w.vaccine IN ").append(quoted(CIEL_TETANUS)).append(" THEN CASE WHEN ")
+		        .append(NhmisSql.pregnant("w.patient_id", "w.given")).append(" THEN '").append(TD_PREGNANT_CONCEPT)
+		        .append("' ELSE '").append(TD_NON_PREGNANT_CONCEPT).append("' END");
+		return sql.append(" END").toString();
+	}
+	
+	/** Dose 1..{@code doses} of the vaccines counts on the rows {@code rowPrefix}1..{@code doses}. */
+	private static void appendDoses(StringBuilder sql, List<String> vaccines, String rowPrefix, int doses) {
+		for (int dose = 1; dose <= doses; dose++) {
+			sql.append(" WHEN w.vaccine IN ").append(quoted(vaccines)).append(" AND w.seq = ").append(dose)
+			        .append(" THEN '").append(antigen(rowPrefix + dose)).append('\'');
+		}
+	}
+	
+	private static String antigen(String rowPrefix) {
+		for (VaccineDoseColumn c : ANTIGEN_COLUMNS) {
+			if (c.rowPrefix.equals(rowPrefix)) {
+				return c.vaccineConceptUuid;
+			}
+		}
+		throw new IllegalArgumentException("No NHMIS immunization row " + rowPrefix);
+	}
+	
+	private static String quoted(List<String> uuids) {
+		StringBuilder in = new StringBuilder();
+		for (String u : uuids) {
+			in.append(in.length() == 0 ? "" : ", ").append('\'').append(u).append('\'');
+		}
+		return "(" + in + ")";
 	}
 	
 	private String buildAefiAggregateSql() {
@@ -156,6 +285,7 @@ public class ImmunizationDataSetBuilder {
 		sql.append("  JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
 		sql.append("  WHERE e.voided = 0 AND et.name = 'Immunization Record'\n");
 		sql.append("    AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
+		sql.append("    AND ").append(NhmisSql.atFacility("e.location_id")).append("\n");
 		sql.append("  ) y");
 		CodedObsIndicatorFactory.appendJoins(sql, "y", AEFI_COLUMNS);
 		BooleanObsIndicatorFactory.appendJoins(sql, "y", AEFI_FLAG_COLUMNS);

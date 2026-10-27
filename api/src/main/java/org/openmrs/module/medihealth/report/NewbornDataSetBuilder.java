@@ -10,11 +10,9 @@
 package org.openmrs.module.medihealth.report;
 
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
-import org.openmrs.module.reporting.evaluation.parameter.Parameter;
 import org.springframework.stereotype.Component;
 
 /**
@@ -63,8 +61,7 @@ public class NewbornDataSetBuilder {
 		SqlDataSetDefinition dsd = new SqlDataSetDefinition();
 		dsd.setName("NHMIS - Newborn Health");
 		dsd.setDescription("Form rows 48-62: outcome of pregnancy, immediate newborn care, and complications");
-		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
-		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		NhmisSql.addParameters(dsd);
 		dsd.setSqlQuery(buildSql());
 		return dsd;
 	}
@@ -78,16 +75,16 @@ public class NewbornDataSetBuilder {
 		
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT COUNT(*) AS newborn_encounters_total");
-		sql.append(",\n  SUM(CASE WHEN ").append(live).append(" AND ").append(male)
-		        .append(" AND o_weight.value_numeric < 2.5 THEN 1 ELSE 0 END) AS live_births_male_lt2_5kg");
-		sql.append(",\n  SUM(CASE WHEN ").append(live).append(" AND ").append(male)
-		        .append(" AND o_weight.value_numeric >= 2.5 THEN 1 ELSE 0 END) AS live_births_male_gte2_5kg");
-		sql.append(",\n  SUM(CASE WHEN ").append(live).append(" AND ").append(female)
-		        .append(" AND o_weight.value_numeric < 2.5 THEN 1 ELSE 0 END) AS live_births_female_lt2_5kg");
-		sql.append(",\n  SUM(CASE WHEN ").append(live).append(" AND ").append(female)
-		        .append(" AND o_weight.value_numeric >= 2.5 THEN 1 ELSE 0 END) AS live_births_female_gte2_5kg");
-		sql.append(",\n  SUM(CASE WHEN ").append(live).append(" AND ").append(hiv)
-		        .append(" THEN 1 ELSE 0 END) AS live_births_to_hiv_positive_mothers");
+		sql.append(",\n  COUNT(CASE WHEN ").append(live).append(" AND ").append(male)
+		        .append(" AND o_weight.value_numeric < 2.5 THEN 1 END) AS live_births_male_lt2_5kg");
+		sql.append(",\n  COUNT(CASE WHEN ").append(live).append(" AND ").append(male)
+		        .append(" AND o_weight.value_numeric >= 2.5 THEN 1 END) AS live_births_male_gte2_5kg");
+		sql.append(",\n  COUNT(CASE WHEN ").append(live).append(" AND ").append(female)
+		        .append(" AND o_weight.value_numeric < 2.5 THEN 1 END) AS live_births_female_lt2_5kg");
+		sql.append(",\n  COUNT(CASE WHEN ").append(live).append(" AND ").append(female)
+		        .append(" AND o_weight.value_numeric >= 2.5 THEN 1 END) AS live_births_female_gte2_5kg");
+		sql.append(",\n  COUNT(CASE WHEN ").append(live).append(" AND ").append(hiv)
+		        .append(" THEN 1 END) AS live_births_to_hiv_positive_mothers");
 		BooleanObsIndicatorFactory.appendSelectColumns(sql, FLAG_COLUMNS);
 		
 		sql.append("\nFROM (\n");
@@ -96,6 +93,7 @@ public class NewbornDataSetBuilder {
 		sql.append("  JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
 		sql.append("  WHERE e.voided = 0 AND et.name = 'Newborn Care'\n");
 		sql.append("    AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
+		sql.append("    AND ").append(NhmisSql.atFacility("e.location_id")).append("\n");
 		sql.append(") ev\n");
 		sql.append(leftJoinObs("o_live", LIVE_BIRTH_CONCEPT));
 		sql.append(leftJoinObs("o_male", NEWBORN_MALE_CONCEPT));

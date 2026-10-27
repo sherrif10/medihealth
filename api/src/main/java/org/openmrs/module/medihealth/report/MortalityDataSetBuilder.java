@@ -9,10 +9,7 @@
  */
 package org.openmrs.module.medihealth.report;
 
-import java.util.Date;
-
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
-import org.openmrs.module.reporting.evaluation.parameter.Parameter;
 import org.springframework.stereotype.Component;
 
 /**
@@ -29,8 +26,7 @@ public class MortalityDataSetBuilder {
 		SqlDataSetDefinition dsd = new SqlDataSetDefinition();
 		dsd.setName("NHMIS - Mortality");
 		dsd.setDescription("Form rows 5-9: deaths by age/sex, maternal mortality, and causes of maternal/neonatal/under-5 death");
-		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
-		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		NhmisSql.addParameters(dsd);
 		dsd.setSqlQuery(buildSql());
 		return dsd;
 	}
@@ -44,10 +40,10 @@ public class MortalityDataSetBuilder {
 		// Row 6: maternal mortality, female only, by 10-19yrs / >=20yrs, cause in the maternal set
 		String maternalCauseFilter = "sex = 'Female' AND cause_of_death_uuid IN ("
 		        + CauseOfDeathConcepts.quotedInClause(CauseOfDeathConcepts.MATERNAL_CAUSES) + ")";
-		sql.append(",\n  SUM(CASE WHEN ").append(maternalCauseFilter)
-		        .append(" AND age_at_death_years < 20 THEN 1 ELSE 0 END) AS maternal_deaths_10_19yrs");
-		sql.append(",\n  SUM(CASE WHEN ").append(maternalCauseFilter)
-		        .append(" AND age_at_death_years >= 20 THEN 1 ELSE 0 END) AS maternal_deaths_gte20yrs");
+		sql.append(",\n  COUNT(CASE WHEN ").append(maternalCauseFilter)
+		        .append(" AND age_at_death_years < 20 THEN 1 END) AS maternal_deaths_10_19yrs");
+		sql.append(",\n  COUNT(CASE WHEN ").append(maternalCauseFilter)
+		        .append(" AND age_at_death_years >= 20 THEN 1 END) AS maternal_deaths_gte20yrs");
 		// Row 7: confirmed maternal deaths by individual cause
 		appendCauseColumns(sql, "maternal_death", "sex = 'Female'", CauseOfDeathConcepts.MATERNAL_CAUSES, new String[] {
 		        "postpartum_haemorrhage", "sepsis", "obstructed_labour", "abortion", "malaria", "anaemia", "hiv", "other" });
@@ -68,6 +64,9 @@ public class MortalityDataSetBuilder {
 		sql.append("    SELECT person_id, death_date AS event_date, cause_of_death AS cause_of_death_concept_id\n");
 		sql.append("    FROM person\n");
 		sql.append("    WHERE dead = 1 AND voided = 0 AND death_date >= :startDate AND death_date < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
+		sql.append("      AND ")
+		        .append(NhmisSql.atFacility(NhmisSql.patientLocationAt("person.person_id", "person.death_date")))
+		        .append("\n");
 		sql.append("  ) ev\n");
 		sql.append("  JOIN person p ON p.person_id = ev.person_id\n");
 		sql.append("  LEFT JOIN concept c ON c.concept_id = ev.cause_of_death_concept_id\n");
@@ -76,16 +75,15 @@ public class MortalityDataSetBuilder {
 	}
 	
 	/**
-	 * Appends one SUM(...) column per cause in {@code causeUuids}, each counting rows matching
+	 * Appends one COUNT(...) column per cause in {@code causeUuids}, each counting rows matching
 	 * {@code baseFilter} and that specific cause, plus one "other"-labelled combined column isn't
 	 * needed since "Other" is itself one of the passed-in causes/labels.
 	 */
 	private void appendCauseColumns(StringBuilder sql, String rowPrefix, String baseFilter, String[] causeUuids,
 	        String[] causeLabels) {
 		for (int i = 0; i < causeUuids.length; i++) {
-			sql.append(",\n  SUM(CASE WHEN ").append(baseFilter).append(" AND cause_of_death_uuid = '")
-			        .append(causeUuids[i]).append("' THEN 1 ELSE 0 END) AS ").append(rowPrefix).append('_')
-			        .append(causeLabels[i]);
+			sql.append(",\n  COUNT(CASE WHEN ").append(baseFilter).append(" AND cause_of_death_uuid = '")
+			        .append(causeUuids[i]).append("' THEN 1 END) AS ").append(rowPrefix).append('_').append(causeLabels[i]);
 		}
 	}
 }

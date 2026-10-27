@@ -15,9 +15,9 @@ import java.util.List;
  * Most rows in the ANC, Labour &amp; Delivery, Postnatal Care and Newborn Health sections of the
  * NHMIS Monthly Summary Form reduce to the same shape: "count encounters of type X, within the
  * reporting period, where boolean concept Y was recorded true". This factory builds the repeated
- * "one LEFT JOIN to obs, one SUM(...) column" part of that shape, so each section's dataset builder
- * only has to list its (row, concept) pairs and compose them with whatever else that section's
- * query also needs (age bands, other obs values, etc).
+ * "one LEFT JOIN to obs, one COUNT(...) column" part of that shape, so each section's dataset
+ * builder only has to list its (row, concept) pairs and compose them with whatever else that
+ * section's query also needs (age bands, other obs values, etc).
  */
 public class BooleanObsIndicatorFactory {
 	
@@ -31,13 +31,13 @@ public class BooleanObsIndicatorFactory {
 	        + "WHERE property = 'concept.true')";
 	
 	/**
-	 * Appends one {@code SUM(CASE WHEN ... value_coded = <true concept> ...) AS <alias>} column per
-	 * entry.
+	 * Appends one {@code COUNT(CASE WHEN ... value_coded = <true concept> ...) AS <alias>} column
+	 * per entry.
 	 */
 	public static void appendSelectColumns(StringBuilder sql, List<BooleanObsColumn> columns) {
 		for (BooleanObsColumn c : columns) {
-			sql.append(",\n  SUM(CASE WHEN ").append(joinAlias(c)).append(".value_coded = ").append(TRUE_CONCEPT_ID_SQL)
-			        .append(" THEN 1 ELSE 0 END) AS ").append(c.columnAlias);
+			sql.append(",\n  COUNT(CASE WHEN ").append(joinAlias(c)).append(".value_coded = ").append(TRUE_CONCEPT_ID_SQL)
+			        .append(" THEN 1 END) AS ").append(c.columnAlias);
 		}
 	}
 	

@@ -9,10 +9,7 @@
  */
 package org.openmrs.module.medihealth.report;
 
-import java.util.Date;
-
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
-import org.openmrs.module.reporting.evaluation.parameter.Parameter;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,8 +24,7 @@ public class InpatientCareDataSetBuilder {
 		SqlDataSetDefinition dsd = new SqlDataSetDefinition();
 		dsd.setName("NHMIS - Inpatient Care");
 		dsd.setDescription("Form rows 3-4: Patients admitted and Inpatient discharges by sex and age band");
-		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
-		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		NhmisSql.addParameters(dsd);
 		dsd.setSqlQuery(buildSql());
 		return dsd;
 	}
@@ -36,8 +32,8 @@ public class InpatientCareDataSetBuilder {
 	private String buildSql() {
 		StringBuilder sql = new StringBuilder();
 		sql.append("SELECT\n");
-		sql.append("  SUM(CASE WHEN encounter_type_name = 'Admission' THEN 1 ELSE 0 END) AS patients_admitted_total,\n");
-		sql.append("  SUM(CASE WHEN encounter_type_name = 'Discharge' THEN 1 ELSE 0 END) AS inpatient_discharges_total");
+		sql.append("  COUNT(CASE WHEN encounter_type_name = 'Admission' THEN 1 END) AS patients_admitted_total,\n");
+		sql.append("  COUNT(CASE WHEN encounter_type_name = 'Discharge' THEN 1 END) AS inpatient_discharges_total");
 		AgeSexColumnFactory.appendColumns(sql, "patients_admitted", "encounter_type_name = 'Admission'");
 		AgeSexColumnFactory.appendColumns(sql, "inpatient_discharges", "encounter_type_name = 'Discharge'");
 		sql.append("\nFROM (\n");
@@ -50,6 +46,7 @@ public class InpatientCareDataSetBuilder {
 		sql.append("    JOIN encounter_type et ON et.encounter_type_id = e.encounter_type\n");
 		sql.append("    WHERE e.voided = 0 AND et.name IN ('Admission', 'Discharge')\n");
 		sql.append("      AND e.encounter_datetime >= :startDate AND e.encounter_datetime < DATE_ADD(DATE(:endDate), INTERVAL 1 DAY)\n");
+		sql.append("      AND ").append(NhmisSql.atFacility("e.location_id")).append("\n");
 		sql.append("  ) ev\n");
 		sql.append("  JOIN person p ON p.person_id = ev.patient_id AND p.voided = 0\n");
 		sql.append(") x");

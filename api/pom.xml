@@ -66,6 +66,13 @@
 			<version>${reportingModuleVersion}</version>
 			<scope>provided</scope>
 		</dependency>
+		<!-- EvaluationContext (read by NhmisFormRenderer) extends the calculation module's context -->
+		<dependency>
+			<groupId>org.openmrs.module</groupId>
+			<artifactId>calculation-api</artifactId>
+			<version>1.3.0</version>
+			<scope>provided</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -74,6 +81,16 @@
 			<resource>
 				<directory>src/main/resources</directory>
 				<filtering>true</filtering>
+				<excludes>
+					<exclude>**/*.xls</exclude>
+				</excludes>
+			</resource>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>false</filtering>
+				<includes>
+					<include>**/*.xls</include>
+				</includes>
 			</resource>
 		</resources>
 

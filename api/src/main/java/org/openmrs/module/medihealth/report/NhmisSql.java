@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
+import org.openmrs.Location;
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
 import org.openmrs.module.reporting.evaluation.parameter.Parameter;
 
@@ -62,12 +63,29 @@ public final class NhmisSql {
 	private NhmisSql() {
 	}
 	
+	/**
+	 * The parameters every NHMIS section takes: the period, and the health facility (a PHC) the
+	 * form is for.
+	 */
+	public static void addParameters(SqlDataSetDefinition dsd) {
+		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
+		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		dsd.addParameter(facilityParameter());
+	}
+	
+	/**
+	 * The "location" parameter: the PHC the form is for. Required: the reporting module cannot
+	 * queue a request with a blank parameter (NullPointerException in Mapped.equals).
+	 */
+	public static Parameter facilityParameter() {
+		return new Parameter("location", "Health facility", Location.class);
+	}
+	
 	public static SqlDataSetDefinition dataSet(String name, String description, NhmisBlock... blocks) {
 		SqlDataSetDefinition dsd = new SqlDataSetDefinition();
 		dsd.setName(name);
 		dsd.setDescription(description);
-		dsd.addParameter(new Parameter("startDate", "Start Date", Date.class));
-		dsd.addParameter(new Parameter("endDate", "End Date", Date.class));
+		addParameters(dsd);
 		StringBuilder sql = new StringBuilder("SELECT *\nFROM ");
 		for (int i = 0; i < blocks.length; i++) {
 			if (i > 0) {
@@ -81,6 +99,35 @@ public final class NhmisSql {
 	
 	public static String inPeriod(String column) {
 		return column + " >= :startDate AND " + column + " < " + PERIOD_END;
+	}
+	
+	/**
+	 * True when {@code locationIdExpr} is the chosen facility or a location under it (up to three
+	 * levels down).
+	 */
+	public static String atFacility(String locationIdExpr) {
+		return locationIdExpr + " IN (SELECT zl.location_id FROM location zl "
+		        + "LEFT JOIN location zl2 ON zl2.location_id = zl.parent_location "
+		        + "LEFT JOIN location zl3 ON zl3.location_id = zl2.parent_location "
+		        + "WHERE :location IN (zl.location_id, zl2.location_id, zl3.location_id))";
+	}
+	
+	/**
+	 * The location of the encounter {@code encounterIdExpr} (orders carry no location of their
+	 * own).
+	 */
+	public static String encounterLocation(String encounterIdExpr) {
+		return "(SELECT zel.location_id FROM encounter zel WHERE zel.encounter_id = " + encounterIdExpr + ")";
+	}
+	
+	/**
+	 * The location of the patient's latest encounter up to the end of the day {@code dateExpr}, for
+	 * records with no encounter of their own (conditions).
+	 */
+	public static String patientLocationAt(String patientExpr, String dateExpr) {
+		return "(SELECT zpl.location_id FROM encounter zpl WHERE zpl.patient_id = " + patientExpr
+		        + " AND zpl.voided = 0 AND zpl.encounter_datetime < DATE_ADD(DATE(" + dateExpr + "), INTERVAL 1 DAY) "
+		        + "ORDER BY zpl.encounter_datetime DESC LIMIT 1)";
 	}
 	
 	public static String conceptId(String uuid) {
@@ -109,33 +156,39 @@ public final class NhmisSql {
 	public static String encounters(String encounterTypeUuid) {
 		return "SELECT e.encounter_id AS event_id, e.patient_id, e.encounter_datetime AS event_date FROM encounter e "
 		        + "WHERE e.voided = 0 AND e.encounter_type = (SELECT encounter_type_id FROM encounter_type WHERE uuid = '"
-		        + encounterTypeUuid + "') AND " + inPeriod("e.encounter_datetime");
-	}
-	
-	/** Visit-note diagnoses and conditions with one of the given concepts, recorded in the period. */
-	public static String diagnoses(Collection<String> uuids) {
-		String ids = conceptIds(uuids);
-		return "SELECT CONCAT('d', ed.diagnosis_id) AS event_id, ed.patient_id, e.encounter_datetime AS event_date "
-		        + "FROM encounter_diagnosis ed JOIN encounter e ON e.encounter_id = ed.encounter_id AND e.voided = 0 "
-		        + "WHERE ed.voided = 0 AND ed.diagnosis_coded IN " + ids + " AND " + inPeriod("e.encounter_datetime")
-		        + "\n  UNION ALL SELECT CONCAT('c', c.condition_id), c.patient_id, COALESCE(c.onset_date, c.date_created) "
-		        + "FROM conditions c WHERE c.voided = 0 AND c.condition_coded IN " + ids + " AND "
-		        + inPeriod("COALESCE(c.onset_date, c.date_created)");
+		        + encounterTypeUuid + "') AND " + inPeriod("e.encounter_datetime") + " AND " + atFacility("e.location_id");
 	}
 	
 	/**
-	 * Patients whose first ever diagnosis (or condition onset) among the given concepts falls in
-	 * the period, i.e. new cases of a long-term condition rather than everyone seen for it this
-	 * month.
+	 * Visit-note diagnoses and conditions with one of the given concepts, recorded in the period at
+	 * the facility (a condition is placed at the patient's latest encounter up to its date).
+	 */
+	public static String diagnoses(Collection<String> uuids) {
+		String ids = conceptIds(uuids);
+		String conditionDate = "COALESCE(c.onset_date, c.date_created)";
+		return "SELECT CONCAT('d', ed.diagnosis_id) AS event_id, ed.patient_id, e.encounter_datetime AS event_date "
+		        + "FROM encounter_diagnosis ed JOIN encounter e ON e.encounter_id = ed.encounter_id AND e.voided = 0 "
+		        + "WHERE ed.voided = 0 AND ed.diagnosis_coded IN " + ids + " AND " + inPeriod("e.encounter_datetime")
+		        + " AND " + atFacility("e.location_id") + "\n  UNION ALL SELECT CONCAT('c', c.condition_id), c.patient_id, "
+		        + conditionDate + " " + "FROM conditions c WHERE c.voided = 0 AND c.condition_coded IN " + ids + " AND "
+		        + inPeriod(conditionDate) + " AND " + atFacility(patientLocationAt("c.patient_id", conditionDate));
+	}
+	
+	/**
+	 * Patients whose first diagnosis (or condition onset) at the facility among the given concepts
+	 * falls in the period, i.e. new cases of a long-term condition rather than everyone seen for it
+	 * this month.
 	 */
 	public static String firstDiagnoses(Collection<String> uuids) {
 		String ids = conceptIds(uuids);
+		String conditionDate = "COALESCE(c.onset_date, c.date_created)";
 		return "SELECT CONCAT('p', f.patient_id) AS event_id, f.patient_id, f.event_date FROM (SELECT a.patient_id, "
 		        + "MIN(a.event_date) AS event_date FROM (SELECT ed.patient_id, e.encounter_datetime AS event_date "
 		        + "FROM encounter_diagnosis ed JOIN encounter e ON e.encounter_id = ed.encounter_id AND e.voided = 0 "
-		        + "WHERE ed.voided = 0 AND ed.diagnosis_coded IN " + ids
-		        + " UNION ALL SELECT c.patient_id, COALESCE(c.onset_date, c.date_created) FROM conditions c "
-		        + "WHERE c.voided = 0 AND c.condition_coded IN " + ids + ") a GROUP BY a.patient_id) f WHERE "
+		        + "WHERE ed.voided = 0 AND ed.diagnosis_coded IN " + ids + " AND " + atFacility("e.location_id")
+		        + " UNION ALL SELECT c.patient_id, " + conditionDate + " FROM conditions c "
+		        + "WHERE c.voided = 0 AND c.condition_coded IN " + ids + " AND "
+		        + atFacility(patientLocationAt("c.patient_id", conditionDate)) + ") a GROUP BY a.patient_id) f WHERE "
 		        + inPeriod("f.event_date");
 	}
 	
@@ -143,7 +196,7 @@ public final class NhmisSql {
 	public static String obsAnswers(Collection<String> answerUuids) {
 		return "SELECT CONCAT('o', o.obs_id) AS event_id, o.person_id AS patient_id, o.obs_datetime AS event_date "
 		        + "FROM obs o WHERE o.voided = 0 AND o.value_coded IN " + conceptIds(answerUuids) + " AND "
-		        + inPeriod("o.obs_datetime");
+		        + inPeriod("o.obs_datetime") + " AND " + atFacility("o.location_id");
 	}
 	
 	/**
@@ -155,21 +208,21 @@ public final class NhmisSql {
 		        + ")" : "o.value_coded IN " + conceptIds(answerUuids);
 		return "SELECT CONCAT('o', o.obs_id) AS event_id, o.person_id AS patient_id, o.obs_datetime AS event_date "
 		        + "FROM obs o WHERE o.voided = 0 AND o.concept_id IN " + conceptIds(questionUuids) + " AND " + answer
-		        + " AND " + inPeriod("o.obs_datetime");
+		        + " AND " + inPeriod("o.obs_datetime") + " AND " + atFacility("o.location_id");
 	}
 	
 	/** Boolean obs of the given concept recorded true in the period. */
 	public static String obsTrue(String conceptUuid) {
 		return "SELECT CONCAT('o', o.obs_id) AS event_id, o.person_id AS patient_id, o.obs_datetime AS event_date "
 		        + "FROM obs o WHERE o.voided = 0 AND o.concept_id = " + conceptId(conceptUuid) + " AND o.value_coded = "
-		        + TRUE_ID + " AND " + inPeriod("o.obs_datetime");
+		        + TRUE_ID + " AND " + inPeriod("o.obs_datetime") + " AND " + atFacility("o.location_id");
 	}
 	
 	/** Numeric obs of the given concept at or above {@code min} in the period. */
 	public static String obsAtLeast(String conceptUuid, String min) {
 		return "SELECT CONCAT('o', o.obs_id) AS event_id, o.person_id AS patient_id, o.obs_datetime AS event_date "
 		        + "FROM obs o WHERE o.voided = 0 AND o.concept_id = " + conceptId(conceptUuid) + " AND o.value_numeric >= "
-		        + min + " AND " + inPeriod("o.obs_datetime");
+		        + min + " AND " + inPeriod("o.obs_datetime") + " AND " + atFacility("o.location_id");
 	}
 	
 	/** Drug orders placed in the period for a drug matching {@code match}. */
@@ -177,7 +230,7 @@ public final class NhmisSql {
 		return "SELECT CONCAT('r', o.order_id) AS event_id, o.patient_id, o.date_activated AS event_date "
 		        + "FROM orders o JOIN drug_order dro ON dro.order_id = o.order_id LEFT JOIN drug d ON d.drug_id = dro.drug_inventory_id "
 		        + "WHERE o.voided = 0 AND o.order_action <> 'DISCONTINUE' AND " + inPeriod("o.date_activated") + " AND "
-		        + match.sql("o", "dro", "d");
+		        + atFacility(encounterLocation("o.encounter_id")) + " AND " + match.sql("o", "dro", "d");
 	}
 	
 	// ---- per-event checks, for NhmisBlock.with(...): ev = the event row, p = its person --------
@@ -244,14 +297,15 @@ public final class NhmisSql {
 		return "EXISTS (SELECT 1 FROM orders zo JOIN drug_order zdo ON zdo.order_id = zo.order_id "
 		        + "LEFT JOIN drug zdr ON zdr.drug_id = zdo.drug_inventory_id WHERE zo.patient_id = " + patientExpr
 		        + " AND zo.voided = 0 AND zo.order_action <> 'DISCONTINUE' AND " + inPeriod("zo.date_activated") + " AND "
-		        + match.sql("zo", "zdo", "zdr") + ")";
+		        + atFacility(encounterLocation("zo.encounter_id")) + " AND " + match.sql("zo", "zdo", "zdr") + ")";
 	}
 	
 	/** 1 if any encounter in the period has the coded obs answered with {@code answerUuid}. */
 	public static String hadAnswer(String patientExpr, String questionUuid, String answerUuid) {
 		return "EXISTS (SELECT 1 FROM obs zo WHERE zo.person_id = " + patientExpr
 		        + " AND zo.voided = 0 AND zo.concept_id = " + conceptId(questionUuid) + " AND zo.value_coded = "
-		        + conceptId(answerUuid) + " AND " + inPeriod("zo.obs_datetime") + ")";
+		        + conceptId(answerUuid) + " AND " + inPeriod("zo.obs_datetime") + " AND " + atFacility("zo.location_id")
+		        + ")";
 	}
 	
 	/**
