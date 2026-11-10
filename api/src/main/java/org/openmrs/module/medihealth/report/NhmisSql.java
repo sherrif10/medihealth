@@ -268,15 +268,17 @@ public final class NhmisSql {
 	}
 	
 	/**
-	 * 1 if the patient had one of the diagnoses/conditions recorded at any time up to the period
-	 * end.
+	 * 1 if the patient had one of the diagnoses/conditions at any time up to the period end, by the
+	 * date of the visit (or condition onset), not the date it was keyed in.
 	 */
 	public static String everDiagnosed(String patientExpr, Collection<String> uuids) {
 		String ids = conceptIds(uuids);
-		return "(EXISTS (SELECT 1 FROM encounter_diagnosis zed WHERE zed.patient_id = " + patientExpr
-		        + " AND zed.voided = 0 AND zed.diagnosis_coded IN " + ids + " AND zed.date_created < " + PERIOD_END
+		return "(EXISTS (SELECT 1 FROM encounter_diagnosis zed JOIN encounter zede ON zede.encounter_id = zed.encounter_id"
+		        + " WHERE zed.patient_id = " + patientExpr + " AND zed.voided = 0 AND zed.diagnosis_coded IN " + ids
+		        + " AND zede.encounter_datetime < " + PERIOD_END
 		        + ") OR EXISTS (SELECT 1 FROM conditions zc WHERE zc.patient_id = " + patientExpr
-		        + " AND zc.voided = 0 AND zc.condition_coded IN " + ids + " AND zc.date_created < " + PERIOD_END + "))";
+		        + " AND zc.voided = 0 AND zc.condition_coded IN " + ids + " AND COALESCE(zc.onset_date, zc.date_created) < "
+		        + PERIOD_END + "))";
 	}
 	
 	/** 1 if the patient has a result of the tests in the period (see {@link #obsResults}). */
