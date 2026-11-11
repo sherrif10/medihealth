@@ -50,6 +50,11 @@ public class ImmunizationDataSetBuilder {
 	
 	private static final String TD_NON_PREGNANT_CONCEPT = "f3448db1-1bc9-4622-ba08-e1192e4eaaf9";
 	
+	// "TT1 / Td1" and "TT2 / Td2" yes/no questions on the "Antenatal Care (ANC)" form (form v3)
+	private static final String ANC_TT1_CONCEPT = "3f1e9c2a-7b4d-4e8a-9c61-5d2f0a8b7e12";
+	
+	private static final String ANC_TT2_CONCEPT = "3f1e9c2a-7b4d-4e8a-9c61-5d2f0a8b7e13";
+	
 	// The Immunizations widget's obs group: CIEL immunizations (the vaccine), vaccination date, dose number
 	private static final String WIDGET_VACCINE_CONCEPT = "984AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 	
@@ -171,7 +176,7 @@ public class ImmunizationDataSetBuilder {
 		        .append("' ELSE '").append(VaccineDoseIndicatorFactory.FIXED).append("' END AS location_band,\n");
 		sql.append("    d.td_dose_number\n");
 		sql.append("  FROM (\n");
-		sql.append(NhmisSql.union(formDosesSql(), widgetDosesSql()));
+		sql.append(NhmisSql.union(formDosesSql(), widgetDosesSql(), ancTetanusDosesSql()));
 		sql.append("\n  ) d\n");
 		sql.append("  WHERE d.vaccine_uuid IS NOT NULL\n");
 		sql.append("  ) x");
@@ -191,6 +196,22 @@ public class ImmunizationDataSetBuilder {
 		        + NhmisSql.conceptId(TD_DOSE_NUMBER_CONCEPT) + " "
 		        + "WHERE o.voided = 0 AND e.voided = 0 AND et.name = 'Immunization Record' AND o.concept_id = "
 		        + NhmisSql.conceptId(VACCINE_ADMINISTERED_CONCEPT) + " AND " + NhmisSql.inPeriod("e.encounter_datetime")
+		        + " AND " + NhmisSql.atFacility("e.location_id");
+	}
+	
+	/**
+	 * TT1 / TT2 ticked on the ANC form: Td dose 1 / 2 to a pregnant woman, on the visit date. The
+	 * same dose also recorded on the Immunization Record or in the widget that day counts once.
+	 */
+	private String ancTetanusDosesSql() {
+		return "SELECT o.person_id AS patient_id, '" + TD_PREGNANT_CONCEPT + "' AS vaccine_uuid, "
+		        + "e.encounter_datetime AS given, p.birthdate, l.name AS location_name, " + "CASE WHEN o.concept_id = "
+		        + NhmisSql.conceptId(ANC_TT1_CONCEPT) + " THEN 1 ELSE 2 END AS td_dose_number "
+		        + "FROM obs o JOIN encounter e ON e.encounter_id = o.encounter_id AND e.voided = 0 "
+		        + "JOIN person p ON p.person_id = o.person_id AND p.voided = 0 "
+		        + "JOIN location l ON l.location_id = e.location_id " + "WHERE o.voided = 0 AND o.concept_id IN ("
+		        + NhmisSql.conceptId(ANC_TT1_CONCEPT) + ", " + NhmisSql.conceptId(ANC_TT2_CONCEPT)
+		        + ") AND o.value_coded = " + NhmisSql.TRUE_ID + " AND " + NhmisSql.inPeriod("e.encounter_datetime")
 		        + " AND " + NhmisSql.atFacility("e.location_id");
 	}
 	
