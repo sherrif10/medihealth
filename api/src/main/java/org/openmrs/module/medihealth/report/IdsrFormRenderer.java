@@ -14,14 +14,24 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.openxml4j.opc.OPCPackage;
+import org.apache.poi.openxml4j.opc.PackagePart;
+import org.apache.poi.openxml4j.opc.PackagePartName;
+import org.apache.poi.openxml4j.opc.PackageRelationship;
+import org.apache.poi.openxml4j.opc.PackagingURIHelper;
+import org.apache.poi.openxml4j.opc.TargetMode;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openmrs.Location;
 import org.openmrs.annotation.Handler;
@@ -35,9 +45,9 @@ import org.openmrs.module.reporting.report.renderer.RenderingException;
 import org.openmrs.module.reporting.report.renderer.ReportTemplateRenderer;
 
 /**
- * Fills the official IDSR workbook: the counts go into the IDSR 002 or 003 sheet (health facility
- * or LGA level, see {@link IdsrForm}), with the facility, period and facility totals in the header.
- * The rest of the workbook is returned unchanged, and the filled sheet opens first.
+ * Fills the official IDSR workbook's IDSR 002 or 003 sheet (health facility or LGA level, see
+ * {@link IdsrForm}) with the counts, and the facility, period and facility totals in the header.
+ * The download contains only that sheet.
  */
 @Handler
 @Localized("reporting.ExcelTemplateRenderer")
@@ -69,14 +79,74 @@ public class IdsrFormRenderer extends ReportTemplateRenderer {
 		fillCounts(sheet, form, counts(results.getDataSets().get("cells")));
 		fillHeader(sheet, form, perFacility, results);
 		
-		int index = wb.getSheetIndex(sheet);
-		for (int i = 0; i < wb.getNumberOfSheets(); i++) {
-			wb.getSheetAt(i).setSelected(i == index);
+		// the download is this one form: drop the workbook's other sheets (POI also drops the
+		// calculation chain, so Excel does not offer to repair the file)
+		for (int i = wb.getNumberOfSheets() - 1; i >= 0; i--) {
+			if (wb.getSheetAt(i) != sheet) {
+				removeSheet(wb, i);
+			}
 		}
-		wb.setActiveSheet(index);
-		wb.setFirstVisibleTab(index);
+		removeNavigation((XSSFSheet) sheet);
+		// print the whole form (to the signature line) on one landscape page
+		sheet.setFitToPage(true);
+		sheet.getPrintSetup().setLandscape(true);
+		sheet.getPrintSetup().setFitWidth((short) 1);
+		sheet.getPrintSetup().setFitHeight((short) 1);
+		wb.setPrintArea(0, 0, form == IdsrForm.MONTHLY_003 ? 26 : 25, 0, 29);
+		sheet.setSelected(true);
+		wb.setActiveSheet(0);
+		wb.setFirstVisibleTab(0);
 		wb.setForceFormulaRecalculation(true);
 		wb.write(out);
+	}
+	
+	/**
+	 * Clears the template's Home/Prev/Next/End/Exit buttons (row 4, B-G): they link to sheets of
+	 * the source workbook ("LGA1", "Control Sheet") that are not in the download.
+	 */
+	private static void removeNavigation(XSSFSheet sheet) {
+		Row row = sheet.getRow(3);
+		if (row == null) {
+			return;
+		}
+		for (int c = 1; c <= 6; c++) {
+			sheet.removeHyperlink(3, c);
+			Cell cell = row.getCell(c);
+			if (cell != null) {
+				row.removeCell(cell);
+			}
+		}
+		// POI 3.12 only rewrites the hyperlinks element when some remain, so clear it ourselves
+		if (sheet.getNumHyperlinks() == 0 && sheet.getCTWorksheet().isSetHyperlinks()) {
+			sheet.getCTWorksheet().unsetHyperlinks();
+		}
+	}
+	
+	/**
+	 * Removes a sheet and the parts only it uses (its Excel table, printer settings): POI removes
+	 * the sheet itself but would leave those parts in the file.
+	 */
+	private static void removeSheet(XSSFWorkbook wb, int index) throws IOException {
+		PackagePart sheetPart = wb.getSheetAt(index).getPackagePart();
+		List<PackagePartName> parts = new ArrayList<PackagePartName>();
+		try {
+			for (PackageRelationship rel : sheetPart.getRelationships()) {
+				if (rel.getTargetMode() == TargetMode.INTERNAL) {
+					parts.add(PackagingURIHelper.createPartName(PackagingURIHelper.resolvePartUri(sheetPart.getPartName()
+					        .getURI(), rel.getTargetURI())));
+				}
+			}
+		}
+		catch (InvalidFormatException e) {
+			throw new IOException("Unable to read the parts of sheet " + index, e);
+		}
+		wb.removeSheetAt(index);
+		OPCPackage pkg = wb.getPackage();
+		for (PackagePartName part : parts) {
+			if (pkg.containPart(part)) {
+				pkg.removePart(part);
+			}
+		}
 	}
 	
 	/** "rowKey|measure|ageBand" mapped to the number of patients. */
