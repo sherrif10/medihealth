@@ -66,6 +66,13 @@
 			<version>${reportingModuleVersion}</version>
 			<scope>provided</scope>
 		</dependency>
+		<!-- XSSF (.xlsx) workbooks for the IDSR forms; the reporting module ships poi-ooxml 3.12 at runtime -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>3.12</version>
+			<scope>provided</scope>
+		</dependency>
 		<!-- EvaluationContext (read by NhmisFormRenderer) extends the calculation module's context -->
 		<dependency>
 			<groupId>org.openmrs.module</groupId>
@@ -83,6 +90,7 @@
 				<filtering>true</filtering>
 				<excludes>
 					<exclude>**/*.xls</exclude>
+					<exclude>**/*.xlsx</exclude>
 				</excludes>
 			</resource>
 			<resource>
@@ -90,6 +98,7 @@
 				<filtering>false</filtering>
 				<includes>
 					<include>**/*.xls</include>
+					<include>**/*.xlsx</include>
 				</includes>
 			</resource>
 		</resources>
