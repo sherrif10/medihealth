@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.openmrs.module.medihealth.immunization.ImmunizationHistory;
 import org.openmrs.module.reporting.dataset.definition.SqlDataSetDefinition;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Component;
  * driven off {@code obs} directly rather than off one row per encounter, which naturally handles
  * 0-5 doses per visit without needing per-concept LEFT JOINs. Rows 65-87 (standard EPI antigens)
  * split by recipient age (&lt;1yr / &gt;=1yr, computed against the encounter date) and delivery
+ * venue: the "Vaccination venue" answer on the form (Within facility = Fixed, Outreach), else the
  * location ("Mobile Clinic" location = Outreach, everything else = Fixed, per confirmed mapping).
  * Row 83 (Fully Immunized) splits by location only. Rows 63-64 (TD) split by dose number (1-5, read
  * off a sibling obs in the same obs group) and pregnancy status, using dedicated
@@ -36,11 +38,21 @@ import org.springframework.stereotype.Component;
  * obs group per dose with the CIEL vaccine, date given and dose number) count too: each is turned
  * into the NHMIS row it belongs to by {@link #widgetDoseRow()}. A dose recorded both ways for the
  * same patient on the same day counts once.
+ * <p>
+ * Form doses copied into the immunization history ({@link ImmunizationHistory}) are not counted
+ * again from the widget.
  */
 @Component("medihealth.ImmunizationDataSetBuilder")
 public class ImmunizationDataSetBuilder {
 	
 	private static final String VACCINE_ADMINISTERED_CONCEPT = "cc2f3a5c-ea29-4709-bf70-7c516dbf3719";
+	
+	// "Vaccination venue" on the Immunization Record form (v2)
+	static final String VENUE_CONCEPT = "7a3c1e90-5b2d-4f6e-8a1c-3d4e5f6a7b01";
+	
+	static final String VENUE_WITHIN_FACILITY = "7a3c1e90-5b2d-4f6e-8a1c-3d4e5f6a7b02";
+	
+	static final String VENUE_OUTREACH = "7a3c1e90-5b2d-4f6e-8a1c-3d4e5f6a7b03";
 	
 	private static final String TD_DOSE_NUMBER_CONCEPT = "f05e8ce6-2fef-4be8-b578-8e3726ba1bde";
 	
@@ -172,7 +184,11 @@ public class ImmunizationDataSetBuilder {
 		sql.append("    CASE WHEN TIMESTAMPDIFF(YEAR, d.birthdate, d.given) < 1 THEN '")
 		        .append(VaccineDoseIndicatorFactory.UNDER_1YR).append("' ELSE '")
 		        .append(VaccineDoseIndicatorFactory.OVER_1YR).append("' END AS age_band,\n");
-		sql.append("    CASE WHEN d.location_name = 'Mobile Clinic' THEN '").append(VaccineDoseIndicatorFactory.OUTREACH)
+		// the venue chosen on the Immunization Record form; else the "Mobile Clinic" location means outreach
+		sql.append("    CASE WHEN d.venue_uuid = '").append(VENUE_OUTREACH).append("' THEN '")
+		        .append(VaccineDoseIndicatorFactory.OUTREACH).append("' WHEN d.venue_uuid = '")
+		        .append(VENUE_WITHIN_FACILITY).append("' THEN '").append(VaccineDoseIndicatorFactory.FIXED)
+		        .append("' WHEN d.location_name = 'Mobile Clinic' THEN '").append(VaccineDoseIndicatorFactory.OUTREACH)
 		        .append("' ELSE '").append(VaccineDoseIndicatorFactory.FIXED).append("' END AS location_band,\n");
 		sql.append("    d.td_dose_number\n");
 		sql.append("  FROM (\n");
@@ -186,7 +202,8 @@ public class ImmunizationDataSetBuilder {
 	/** Doses on the "Immunization Record" form: the answer is already the NHMIS row's concept. */
 	private String formDosesSql() {
 		return "SELECT o.person_id AS patient_id, vc.uuid AS vaccine_uuid, e.encounter_datetime AS given, p.birthdate, "
-		        + "l.name AS location_name, td.value_numeric AS td_dose_number FROM obs o "
+		        + "l.name AS location_name, " + venueSql("e.encounter_id")
+		        + " AS venue_uuid, td.value_numeric AS td_dose_number FROM obs o "
 		        + "JOIN concept vc ON vc.concept_id = o.value_coded "
 		        + "JOIN encounter e ON e.encounter_id = o.encounter_id "
 		        + "JOIN encounter_type et ON et.encounter_type_id = e.encounter_type "
@@ -199,13 +216,22 @@ public class ImmunizationDataSetBuilder {
 		        + " AND " + NhmisSql.atFacility("e.location_id");
 	}
 	
+	/** The venue answer (its uuid) on the encounter {@code encounterIdExpr}, or NULL. */
+	private static String venueSql(String encounterIdExpr) {
+		return "(SELECT zc.uuid FROM obs zv JOIN concept zc ON zc.concept_id = zv.value_coded WHERE zv.encounter_id = "
+		        + encounterIdExpr + " AND zv.voided = 0 AND zv.concept_id = " + NhmisSql.conceptId(VENUE_CONCEPT)
+		        + " ORDER BY zv.obs_id DESC LIMIT 1)";
+	}
+	
 	/**
 	 * TT1 / TT2 ticked on the ANC form: Td dose 1 / 2 to a pregnant woman, on the visit date. The
 	 * same dose also recorded on the Immunization Record or in the widget that day counts once.
 	 */
 	private String ancTetanusDosesSql() {
-		return "SELECT o.person_id AS patient_id, '" + TD_PREGNANT_CONCEPT + "' AS vaccine_uuid, "
-		        + "e.encounter_datetime AS given, p.birthdate, l.name AS location_name, " + "CASE WHEN o.concept_id = "
+		return "SELECT o.person_id AS patient_id, '"
+		        + TD_PREGNANT_CONCEPT
+		        + "' AS vaccine_uuid, "
+		        + "e.encounter_datetime AS given, p.birthdate, l.name AS location_name, NULL AS venue_uuid, CASE WHEN o.concept_id = "
 		        + NhmisSql.conceptId(ANC_TT1_CONCEPT) + " THEN 1 ELSE 2 END AS td_dose_number "
 		        + "FROM obs o JOIN encounter e ON e.encounter_id = o.encounter_id AND e.voided = 0 "
 		        + "JOIN person p ON p.person_id = o.person_id AND p.voided = 0 "
@@ -220,14 +246,23 @@ public class ImmunizationDataSetBuilder {
 	 * with the vaccine turned into the NHMIS row's concept by {@link #widgetDoseRow()}.
 	 */
 	private String widgetDosesSql() {
-		return "SELECT w.patient_id, " + widgetDoseRow() + " AS vaccine_uuid, w.given, w.birthdate, w.location_name, "
-		        + "CASE WHEN w.vaccine IN " + quoted(CIEL_TETANUS) + " AND w.seq BETWEEN 1 AND 5 THEN w.seq END "
+		return "SELECT w.patient_id, "
+		        + widgetDoseRow()
+		        + " AS vaccine_uuid, w.given, w.birthdate, w.location_name, NULL AS venue_uuid, "
+		        + "CASE WHEN w.vaccine IN "
+		        + quoted(CIEL_TETANUS)
+		        + " AND w.seq BETWEEN 1 AND 5 THEN w.seq END "
 		        + "AS td_dose_number FROM (SELECT o.person_id AS patient_id, vc.uuid AS vaccine, "
 		        + "COALESCE(dg.value_datetime, e.encounter_datetime) AS given, COALESCE(sq.value_numeric, 1) AS seq, "
-		        + "p.birthdate, l.name AS location_name FROM obs o " + "JOIN concept vc ON vc.concept_id = o.value_coded "
+		        + "p.birthdate, l.name AS location_name FROM obs o "
+		        + "JOIN concept vc ON vc.concept_id = o.value_coded "
 		        + "JOIN encounter e ON e.encounter_id = o.encounter_id AND e.voided = 0 "
 		        + "JOIN person p ON p.person_id = o.person_id AND p.voided = 0 "
 		        + "JOIN location l ON l.location_id = e.location_id "
+		        // copies of Immunization Record doses: counted from the form already
+		        + "JOIN obs grp ON grp.obs_id = o.obs_group_id AND (grp.form_namespace_and_path IS NULL OR "
+		        + "grp.form_namespace_and_path NOT LIKE '" + ImmunizationHistory.NAMESPACE + "^"
+		        + ImmunizationHistory.PATH_PREFIX + "%') "
 		        + "LEFT JOIN obs dg ON dg.obs_group_id = o.obs_group_id AND dg.voided = 0 AND dg.concept_id = "
 		        + NhmisSql.conceptId(WIDGET_DATE_GIVEN_CONCEPT) + " "
 		        + "LEFT JOIN obs sq ON sq.obs_group_id = o.obs_group_id AND sq.voided = 0 AND sq.concept_id = "
