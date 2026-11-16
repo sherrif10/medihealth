@@ -107,7 +107,10 @@ public enum IdsrForm {
 		/** Extra SQL condition on the diagnosis (alias {@code ed}), OR-ed with the diagnosis list. */
 		String alsoMatches;
 		
-		/** Counted from an observation question instead of diagnoses (AEFI). */
+		/**
+		 * Also counted from an observation question, not only from diagnoses (AEFI on the
+		 * Immunization Record).
+		 */
 		String obsQuestion;
 		
 		Row(String key, int excelRow, List<String> diagnoses) {
@@ -158,7 +161,7 @@ public enum IdsrForm {
 		MONTHLY_ROWS.add(row("sti_genital_ulcer", 16, IdsrConcepts.GENITAL_ULCER));
 		MONTHLY_ROWS.add(row("sti_urethral_discharge", 17, IdsrConcepts.URETHRAL_DISCHARGE));
 		MONTHLY_ROWS.add(row("sti_other", 18, IdsrConcepts.OTHER_STIS));
-		Row aefi = row("aefi", 20, Collections.<String> emptyList());
+		Row aefi = row("aefi", 20, IdsrConcepts.AEFI_DIAGNOSES);
 		aefi.obsQuestion = IdsrConcepts.AEFI_QUESTION;
 		MONTHLY_ROWS.add(aefi);
 		Row diabetes = row("diabetes_new", 21, NhmisConcepts.DIABETES);
@@ -174,7 +177,7 @@ public enum IdsrForm {
 		Row pneumonia = row("severe_pneumonia_under5", 26, NhmisConcepts.PNEUMONIA);
 		pneumonia.underFive = true;
 		MONTHLY_ROWS.add(pneumonia);
-		Row sickleCell = row("sickle_cell_new", 27, NhmisConcepts.SICKLE_CELL);
+		Row sickleCell = row("sickle_cell_new", 27, IdsrConcepts.SICKLE_CELL_DISORDER);
 		sickleCell.newCasesOnly = true;
 		MONTHLY_ROWS.add(sickleCell);
 	}
@@ -189,8 +192,7 @@ public enum IdsrForm {
 		List<String> events = new ArrayList<String>();
 		for (Row row : rows()) {
 			if (row.obsQuestion != null) {
-				events.add(obsEvents(row, perFacility));
-				continue;
+				events.add(obsEvents(row, perFacility)); // and its diagnoses below, if any: a child counts once
 			}
 			if (row.diagnoses.isEmpty() && row.alsoMatches == null) {
 				continue; // no concept for this row yet; it stays at 0

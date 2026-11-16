@@ -74,20 +74,29 @@ public final class IdsrConcepts {
 	public static final List<String> TYPHOID = Arrays.asList("141AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 	    "130811AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 	
-	public static final List<String> VAGINAL_DISCHARGE = Arrays.asList("8ae0045e-db54-53b5-83f0-fd9703810d73",
-	    "165162AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "2a18f197-07aa-5227-bc2b-444e8286043d");
+	/** Vaginal discharge, and its excessive and foul-smelling variants. */
+	public static final List<String> VAGINAL_DISCHARGE = Arrays.asList("123396AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+	    "8ae0045e-db54-53b5-83f0-fd9703810d73", "165162AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+	    "2a18f197-07aa-5227-bc2b-444e8286043d", "b2fa35be-e413-4e4c-8a51-c1a7cb2393b2");
+	
+	/** "Genital ulcer" (MediHealth concept, see forms/idsr-diagnoses in openmrs-custom-medihealth). */
+	public static final String GENITAL_ULCER_CONCEPT = "7b1d3e5f-2a4c-4e6b-8d0f-1a3c5e7b9d01";
 	
 	/**
-	 * No genital ulcer concept in the MediHealth dictionary yet: the row stays at 0 until one is
-	 * added.
+	 * Genital ulcer syndrome: genital ulcer, chancroid, chancre, LGV, and the older "Genital sores"
+	 * finding.
 	 */
-	public static final List<String> GENITAL_ULCER = Collections.emptyList();
+	public static final List<String> GENITAL_ULCER = Arrays.asList(GENITAL_ULCER_CONCEPT,
+	    "145762AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "113656AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+	    "135462AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "ac633ae8-9960-47fe-b40b-98c1f64a3a34");
 	
 	/**
-	 * No urethral discharge concept in the MediHealth dictionary yet: the row stays at 0 until one
-	 * is added.
+	 * Urethral discharge syndrome: urethral discharge (urethrorrhoea), urethritis (including the
+	 * retired copies, so past cases still count), and the "Urethral discharge" finding.
 	 */
-	public static final List<String> URETHRAL_DISCHARGE = Collections.emptyList();
+	public static final List<String> URETHRAL_DISCHARGE = Arrays.asList("123529AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+	    "9c510a83-c0bd-4b1d-9d90-08ed059e5e73", "25cb409e-d100-4d0b-a23f-7dd2fc199b5f",
+	    "111639AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "ddf70c67-28fa-47df-8d32-cb80a4bdcd4a");
 	
 	/** Gonorrhoea, primary genital syphilis, sexually transmitted disease (also in pregnancy). */
 	public static final List<String> OTHER_STIS = Arrays.asList("117767AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
@@ -99,6 +108,26 @@ public final class IdsrConcepts {
 	 * row 88).
 	 */
 	public static final String AEFI_QUESTION = "d506ce85-f1c4-4f2d-af8a-9ef7a15ea5b4";
+	
+	/**
+	 * "Adverse event following immunization (AEFI)" (MediHealth concept, see forms/idsr-diagnoses).
+	 */
+	public static final String AEFI_CONCEPT = "7b1d3e5f-2a4c-4e6b-8d0f-1a3c5e7b9d02";
+	
+	/**
+	 * AEFI diagnosed in a consultation: AEFI, minor and major ESAVI (non-severe / severe adverse
+	 * event from vaccination), and "ADR following immunization". Counted together with the
+	 * Immunization Record answer; a child counts once.
+	 */
+	public static final List<String> AEFI_DIAGNOSES = Arrays.asList(AEFI_CONCEPT, "27ee895a-8283-403d-8ae4-4462bd1212ce",
+	    "32256e9f-cbdd-45c7-bbba-a748cb7db943", "409ad0d8-6ad7-5f7b-a13e-ca2972b1ecbd");
+	
+	/**
+	 * Sickle cell disorder: sickle cell disease (HbSS, also named "Sickle cell disorder") and HbSC.
+	 * Not the trait.
+	 */
+	public static final List<String> SICKLE_CELL_DISORDER = Arrays.asList("117703AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+	    "a8924189-57c1-47df-860a-3cf7bc42e91b");
 	
 	public static final List<String> ROAD_TRAFFIC_INJURY = Arrays.asList("86AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 	
