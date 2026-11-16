@@ -14,8 +14,10 @@
 
 	<activator>org.openmrs.module.medihealth.MedihealthActivator</activator>
 	
+	<!-- Copies Immunization Record doses into the patient's immunization history -->
 	<advice>
-	
+		<point>org.openmrs.api.EncounterService</point>
+		<class>org.openmrs.module.medihealth.immunization.ImmunizationHistoryAdvice</class>
 	</advice>
 	
 	<require_modules>
