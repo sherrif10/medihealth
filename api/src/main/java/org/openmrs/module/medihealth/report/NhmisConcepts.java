@@ -249,8 +249,13 @@ public final class NhmisConcepts {
 	
 	// ---- drugs ----------------------------------------------------------------------------------
 	
+	/**
+	 * ACTs by ingredient or brand, and drugs named "ACT ..." on the MediHealth formulary (e.g. "ACT
+	 * 20/120 (X6)", "ACT TAB 80/480", "ACT FREE"), which carry no ingredient name. "act" must stand
+	 * alone, so "Activated charcoal" is not an ACT.
+	 */
 	public static final String ACT_NAMES = "lumefantrin|coartem|dihydroartemisinin|piperaquin|pyronaridin|lonart|amatem"
-	        + "|artesunate.{0,40}(amodiaquin|mefloquin)|(amodiaquin|mefloquin).{0,40}artesunate";
+	        + "|artesunate.{0,40}(amodiaquin|mefloquin)|(amodiaquin|mefloquin).{0,40}artesunate|(^|[^a-z])act([^a-z]|$)";
 	
 	public static final DrugMatch ACT = DrugMatch.named(ACT_NAMES);
 	
