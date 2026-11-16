@@ -201,8 +201,10 @@ public class ImmunizationDataSetBuilder {
 	
 	/** Doses on the "Immunization Record" form: the answer is already the NHMIS row's concept. */
 	private String formDosesSql() {
-		return "SELECT o.person_id AS patient_id, vc.uuid AS vaccine_uuid, e.encounter_datetime AS given, p.birthdate, "
-		        + "l.name AS location_name, " + venueSql("e.encounter_id")
+		// IPV 1 and IPV 2 (form v4) count in the form's single IPV row, with the older "IPV" answer
+		return "SELECT o.person_id AS patient_id, CASE WHEN vc.uuid IN ('" + ImmunizationHistory.IPV_1 + "', '"
+		        + ImmunizationHistory.IPV_2 + "') THEN '" + antigen("ipv") + "' ELSE vc.uuid END AS vaccine_uuid, "
+		        + "e.encounter_datetime AS given, p.birthdate, " + "l.name AS location_name, " + venueSql("e.encounter_id")
 		        + " AS venue_uuid, td.value_numeric AS td_dose_number FROM obs o "
 		        + "JOIN concept vc ON vc.concept_id = o.value_coded "
 		        + "JOIN encounter e ON e.encounter_id = o.encounter_id "

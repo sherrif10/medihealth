@@ -59,8 +59,20 @@ public class ImmunizationHistoryTest {
 	
 	@Test
 	public void mapping_shouldCoverEveryNumberedSeriesDose() {
-		// OPV 1-3, Penta 1-3, Rota 1-3, PCV 1-3, Measles 1-2, Hep B birth dose, BCG, IPV, Vitamin A
-		assertEquals(18, ImmunizationHistory.mapping().size());
+		// OPV 1-3, Penta 1-3, Rota 1-3, PCV 1-3, Measles 1-2, Hep B birth dose, BCG, IPV, IPV 1-2, Vitamin A
+		assertEquals(20, ImmunizationHistory.mapping().size());
+	}
+	
+	@Test
+	public void historyDose_shouldPutIpv1AndIpv2UnderInactivatedPolioWithTheirDoseNumber() {
+		HistoryDose ipv1 = ImmunizationHistory.historyDose(ImmunizationHistory.IPV_1, null);
+		HistoryDose ipv2 = ImmunizationHistory.historyDose(ImmunizationHistory.IPV_2, null);
+		assertEquals("1422AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", ipv1.vaccineUuid);
+		assertEquals(Integer.valueOf(1), ipv1.doseNumber);
+		assertEquals("1422AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", ipv2.vaccineUuid);
+		assertEquals(Integer.valueOf(2), ipv2.doseNumber);
+		// older entries recorded as plain "IPV" keep their place, without a dose number
+		assertNull(ImmunizationHistory.historyDose("412201a9-af61-4edf-9bf0-19510819e314", null).doseNumber);
 	}
 	
 	@Test
