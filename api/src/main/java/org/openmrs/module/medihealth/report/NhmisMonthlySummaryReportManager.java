@@ -115,7 +115,7 @@ public class NhmisMonthlySummaryReportManager extends BaseReportManager {
 	
 	@Override
 	public String getVersion() {
-		return "1.12";
+		return "1.13";
 	}
 	
 	@Override
